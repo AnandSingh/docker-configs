@@ -1,0 +1,12 @@
+http:
+  routers:
+    uptime:
+      rule: "Host(`gautham.lab.nexuswarrior.site`)"
+      entryPoints:
+        - websecure
+      service: gautham-code-server
+  services:
+    uptime:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.29:8447"

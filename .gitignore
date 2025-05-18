@@ -1,2 +1,3 @@
 ./traefik/.env
 ./traefik/cf-token
+./traefik/config/acme.json
