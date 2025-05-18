@@ -24,7 +24,7 @@ certificatesResolvers:
   letsencrypt:
     acme:
       # caServer: https://acme-v02.api.letsencrypt.org/directory # production (default)
-      caServer: https://acme-staging-v02.api.letsencrypt.org/directory # staging (testing)
+      # caServer: https://acme-staging-v02.api.letsencrypt.org/directory # staging (testing)
       email: anand.krs@gmail.com
       storage: acme.json
       dnsChallenge:
