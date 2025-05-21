@@ -1,3 +1,4 @@
 ./traefik/.env
 ./traefik/cf-token
 ./traefik/config/acme.json
+./rustdesk/data
