@@ -10,6 +10,3 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.10.29:8449"
-  serversTransports:
-    portainerTransport:
-      insecureSkipVerify: true
