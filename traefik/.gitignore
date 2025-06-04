@@ -1,3 +1,4 @@
 .env
 cf-token
 config/acme.json
+logs/*

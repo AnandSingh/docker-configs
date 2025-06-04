@@ -1,7 +1,7 @@
 http:
   routers:
     portainer:
-      rule: "Host(`portainer.lab.nexuswarrior.site`)"
+      rule: "Host(`portainer.plexlab.site`)"
       entryPoints:
         - websecure
       service: portainer
@@ -9,7 +9,7 @@ http:
     portainer:
       loadBalancer:
         servers:
-          - url: "https://192.168.10.29:9443"
+          - url: "https://192.168.10.113:9443"
         serversTransport: portainerTransport
   serversTransports:
     portainerTransport:
