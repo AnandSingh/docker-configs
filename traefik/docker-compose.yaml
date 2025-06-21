@@ -28,7 +28,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - ./config/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./config/dynamic:/etc/traefik/dynamic:ro
-      - /home/dev/certfiles/acme.json:/acme.json
+      - ./config/acme.json:/acme.json
       - ./logs:/var/log/traefik
     labels:
       - "traefik.enable=true"
