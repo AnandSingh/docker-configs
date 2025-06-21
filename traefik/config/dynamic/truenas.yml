@@ -1,0 +1,16 @@
+http:
+  routers:
+    truenas:
+      rule: "Host(`truenas.plexlab.site`)"
+      entryPoints:
+        - websecure
+      service: truenas
+  services:
+    truenas:
+      loadBalancer:
+        servers:
+          - url: "https://192.168.10.15"
+        serversTransport: truenasTransport
+  serversTransports:
+    truenasTransport:
+      insecureSkipVerify: true

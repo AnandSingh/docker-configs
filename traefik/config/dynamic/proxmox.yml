@@ -1,0 +1,16 @@
+http:
+  routers:
+    proxmox:
+      rule: "Host(`proxmox.plexlab.site`)"
+      entryPoints:
+        - websecure
+      service: proxmox
+  services:
+    proxmox:
+      loadBalancer:
+        servers:
+          - url: "https://192.168.10.61:8006"
+        serversTransport: proxmoxTransport
+  serversTransports:
+    proxmoxTransport:
+      insecureSkipVerify: true
