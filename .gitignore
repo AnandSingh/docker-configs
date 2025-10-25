@@ -1,4 +1,44 @@
+# Service-specific secrets and configuration
 ./traefik/.env
 ./traefik/cf-token
 ./traefik/config/acme.json
 ./rustdesk/data
+
+# Deployment artifacts
+.backups/
+deploy/deploy.log
+deploy/cron-deploy.log
+
+# Environment files (use .env.example instead)
+.env
+*/.env
+.env.local
+.env.*.local
+
+# SSH keys
+*.pem
+*.key
+id_rsa*
+github_deploy*
+
+# Logs
+*.log
+logs/
+traefik/logs/*.log
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/

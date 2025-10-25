@@ -1,0 +1,106 @@
+name: Homelab CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Specific service to deploy (leave empty for all)'
+        required: false
+        type: string
+
+env:
+  DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'ubuntu' }}
+  DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+  DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/home/ubuntu/docker-configs' }}
+
+jobs:
+  validate:
+    name: Validate Docker Compose Files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Traefik compose
+        run: docker compose -f traefik/docker-compose.yaml config > /dev/null
+
+      - name: Validate Homepage compose
+        run: docker compose -f homepage/docker-compose.yaml config > /dev/null
+
+      - name: Validate Pihole compose
+        run: docker compose -f Piholev6/docker-compose.yaml config > /dev/null
+
+      - name: Validate RustDesk compose
+        run: docker compose -f rustdesk/docker-compose.yml config > /dev/null
+
+      - name: Check for secrets in commits
+        run: |
+          if grep -r "CLOUDFLARE_API_TOKEN\|TRAEFIK_DASHBOARD_PASSWORD" --include="*.yaml" --include="*.yml" .; then
+            echo "⚠️  Warning: Found potential secrets in compose files"
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets found"
+
+  deploy:
+    name: Deploy to Homelab
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy to Homelab
+        env:
+          # Service secrets - passed to remote server
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+          TRAEFIK_DASHBOARD_USER: ${{ secrets.TRAEFIK_DASHBOARD_USER }}
+          TRAEFIK_DASHBOARD_PASSWORD: ${{ secrets.TRAEFIK_DASHBOARD_PASSWORD }}
+          PIHOLE_PASSWORD: ${{ secrets.PIHOLE_PASSWORD }}
+          CODE_SERVER_PASSWORD: ${{ secrets.CODE_SERVER_PASSWORD }}
+          DOMAIN: ${{ secrets.DOMAIN }}
+          PIHOLE_DOMAIN: ${{ secrets.PIHOLE_DOMAIN }}
+          HOMEPAGE_DOMAIN: ${{ secrets.HOMEPAGE_DOMAIN }}
+          CODE_SERVER_DOMAIN: ${{ secrets.CODE_SERVER_DOMAIN }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+            "export CLOUDFLARE_API_TOKEN='${{ secrets.CLOUDFLARE_API_TOKEN }}' && \
+             export CLOUDFLARE_EMAIL='${{ secrets.CLOUDFLARE_EMAIL }}' && \
+             export TRAEFIK_DASHBOARD_USER='${{ secrets.TRAEFIK_DASHBOARD_USER }}' && \
+             export TRAEFIK_DASHBOARD_PASSWORD='${{ secrets.TRAEFIK_DASHBOARD_PASSWORD }}' && \
+             export PIHOLE_PASSWORD='${{ secrets.PIHOLE_PASSWORD }}' && \
+             export CODE_SERVER_PASSWORD='${{ secrets.CODE_SERVER_PASSWORD }}' && \
+             export DOMAIN='${{ secrets.DOMAIN }}' && \
+             export PIHOLE_DOMAIN='${{ secrets.PIHOLE_DOMAIN }}' && \
+             export HOMEPAGE_DOMAIN='${{ secrets.HOMEPAGE_DOMAIN }}' && \
+             export CODE_SERVER_DOMAIN='${{ secrets.CODE_SERVER_DOMAIN }}' && \
+             cd ${{ env.DEPLOY_PATH }} && \
+             bash deploy/deploy.sh ${{ github.event.inputs.service || 'all' }}"
+
+      - name: Cleanup SSH
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+      - name: Deployment Status
+        run: |
+          echo "🚀 Deployment completed for: ${{ github.event.inputs.service || 'all services' }}"
+          echo "📦 Commit: ${{ github.sha }}"
+          echo "👤 Author: ${{ github.actor }}"

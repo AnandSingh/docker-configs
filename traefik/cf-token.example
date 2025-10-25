@@ -1,0 +1,11 @@
+# Cloudflare API Token for DNS Challenge
+# Copy this file to cf-token and add your actual token
+#
+# Create your token at: https://dash.cloudflare.com/profile/api-tokens
+# Required permissions:
+#   - Zone:DNS:Edit
+#   - Zone:Zone:Read
+# Zone Resources:
+#   - Include: Specific zone (select your domain)
+
+your_cloudflare_api_token_here
