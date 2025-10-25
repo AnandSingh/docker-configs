@@ -23,7 +23,7 @@ SERVICE="${1:-all}"
 declare -A SERVICES=(
     ["traefik"]="traefik"
     ["homepage"]="homepage"
-    ["pihole"]="Piholev6"
+    # ["pihole"]="Piholev6"  # Disabled - will set up DNS stack later
     ["rustdesk"]="rustdesk"
 )
 
