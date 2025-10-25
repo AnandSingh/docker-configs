@@ -64,7 +64,7 @@ jobs:
 
   deploy:
     name: Deploy to Homelab
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: validate
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
@@ -72,16 +72,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
-
       - name: Deploy to Homelab
         env:
-          # Service secrets - passed to remote server
+          # Service secrets for deployment
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
           TRAEFIK_DASHBOARD_USER: ${{ secrets.TRAEFIK_DASHBOARD_USER }}
@@ -93,24 +86,8 @@ jobs:
           HOMEPAGE_DOMAIN: ${{ secrets.HOMEPAGE_DOMAIN }}
           CODE_SERVER_DOMAIN: ${{ secrets.CODE_SERVER_DOMAIN }}
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
-            "export CLOUDFLARE_API_TOKEN='${{ secrets.CLOUDFLARE_API_TOKEN }}' && \
-             export CLOUDFLARE_EMAIL='${{ secrets.CLOUDFLARE_EMAIL }}' && \
-             export TRAEFIK_DASHBOARD_USER='${{ secrets.TRAEFIK_DASHBOARD_USER }}' && \
-             export TRAEFIK_DASHBOARD_PASSWORD='${{ secrets.TRAEFIK_DASHBOARD_PASSWORD }}' && \
-             export PIHOLE_PASSWORD='${{ secrets.PIHOLE_PASSWORD }}' && \
-             export CODE_SERVER_PASSWORD='${{ secrets.CODE_SERVER_PASSWORD }}' && \
-             export DOMAIN='${{ secrets.DOMAIN }}' && \
-             export PIHOLE_DOMAIN='${{ secrets.PIHOLE_DOMAIN }}' && \
-             export HOMEPAGE_DOMAIN='${{ secrets.HOMEPAGE_DOMAIN }}' && \
-             export CODE_SERVER_DOMAIN='${{ secrets.CODE_SERVER_DOMAIN }}' && \
-             cd ${{ env.DEPLOY_PATH }} && \
-             bash deploy/deploy.sh ${{ github.event.inputs.service || 'all' }}"
-
-      - name: Cleanup SSH
-        if: always()
-        run: rm -f ~/.ssh/deploy_key
+          cd ${{ env.DEPLOY_PATH }}
+          bash deploy/deploy.sh ${{ github.event.inputs.service || 'all' }}
 
       - name: Deployment Status
         run: |
