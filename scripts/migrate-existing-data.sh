@@ -30,10 +30,11 @@ echo -e "${BLUE}Migrate Existing Data${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Check if running as root
+# Check if running as root (optional for NFS with proper user mapping)
 if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}Please run as root (sudo)${NC}"
-    exit 1
+    echo -e "${YELLOW}Note: Not running as root. This is fine if NFS shares are mapped to your user.${NC}"
+    echo -e "${YELLOW}If you encounter permission errors, re-run with sudo.${NC}"
+    echo ""
 fi
 
 # Check if new structure exists
@@ -160,10 +161,12 @@ echo ""
 # Fix permissions
 if [ "$DRY_RUN" = false ]; then
     echo -e "${BLUE}Setting correct permissions...${NC}"
-    chown -R 1000:1000 "$DOCKER_MOUNT/appdata"
-    chown -R 1000:1000 "$DOCKER_MOUNT/databases"
-    chmod -R 755 "$DOCKER_MOUNT/appdata"
-    chmod -R 755 "$DOCKER_MOUNT/databases"
+    # Try to set ownership (will skip if already correct or no sudo)
+    chown -R 1000:1000 "$DOCKER_MOUNT/appdata" 2>/dev/null || echo -e "${YELLOW}  Skipping chown (not needed or requires sudo)${NC}"
+    chown -R 1000:1000 "$DOCKER_MOUNT/databases" 2>/dev/null || true
+    # Set directory permissions
+    chmod -R 755 "$DOCKER_MOUNT/appdata" 2>/dev/null || echo -e "${YELLOW}  Warning: Could not chmod appdata${NC}"
+    chmod -R 755 "$DOCKER_MOUNT/databases" 2>/dev/null || true
     echo -e "${GREEN}✓${NC} Permissions set"
 fi
 

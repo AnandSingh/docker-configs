@@ -78,6 +78,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Sync to deployment directory
+        run: |
+          DEPLOY_DIR="/home/dev/docker/docker-configs"
+
+          echo "Syncing code from runner workspace to $DEPLOY_DIR"
+
+          # Create deployment directory if it doesn't exist
+          mkdir -p "$DEPLOY_DIR"
+
+          # Sync checked out code to deployment directory
+          # Exclude .git to avoid conflicts, exclude service runtime data
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='traefik/config/acme.json' \
+            --exclude='traefik/logs/' \
+            --exclude='homepage/config/' \
+            --exclude='jellyfin/config/' \
+            --exclude='jellyfin/jellyseerr/' \
+            --exclude='jellyfin/jellystat/' \
+            --exclude='servarr/*/config/' \
+            --exclude='rustdesk/data/' \
+            --exclude='.backups/' \
+            --exclude='*.log' \
+            $GITHUB_WORKSPACE/ "$DEPLOY_DIR/"
+
+          echo "✅ Code synced to deployment directory"
+
       - name: Deploy to Homelab
         env:
           # Service secrets for deployment
@@ -92,6 +119,7 @@ jobs:
           HOMEPAGE_DOMAIN: ${{ secrets.HOMEPAGE_DOMAIN }}
           CODE_SERVER_DOMAIN: ${{ secrets.CODE_SERVER_DOMAIN }}
         run: |
+          cd /home/dev/docker/docker-configs
           bash deploy/deploy.sh ${{ github.event.inputs.service || 'all' }}
 
       - name: Deployment Status

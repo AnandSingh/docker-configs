@@ -27,10 +27,11 @@ echo -e "${BLUE}Storage Reorganization${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Check if running as root
+# Check if running as root (optional for NFS with proper user mapping)
 if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}Please run as root (sudo)${NC}"
-    exit 1
+    echo -e "${YELLOW}Note: Not running as root. This is fine if NFS shares are mapped to your user.${NC}"
+    echo -e "${YELLOW}If you encounter permission errors, re-run with sudo.${NC}"
+    echo ""
 fi
 
 echo -e "${BLUE}Current Setup:${NC}"
@@ -107,15 +108,18 @@ echo -e "${GREEN}✓${NC} Directory structure created"
 
 # Set permissions
 echo -e "${BLUE}Setting permissions...${NC}"
-chown -R 1000:1000 "$DOCKER_MOUNT/appdata"
-chown -R 1000:1000 "$DOCKER_MOUNT/databases"
-chown -R 1000:1000 "$DOCKER_MOUNT/downloads"
-chown -R 1000:1000 "$MEDIA_MOUNT"
 
-chmod -R 755 "$DOCKER_MOUNT/appdata"
-chmod -R 755 "$DOCKER_MOUNT/databases"
-chmod -R 755 "$DOCKER_MOUNT/downloads"
-chmod -R 755 "$MEDIA_MOUNT"
+# Try to set ownership (will skip if already correct or no sudo)
+chown -R 1000:1000 "$DOCKER_MOUNT/appdata" 2>/dev/null || echo -e "${YELLOW}  Skipping chown (not needed or requires sudo)${NC}"
+chown -R 1000:1000 "$DOCKER_MOUNT/databases" 2>/dev/null || true
+chown -R 1000:1000 "$DOCKER_MOUNT/downloads" 2>/dev/null || true
+chown -R 1000:1000 "$MEDIA_MOUNT" 2>/dev/null || true
+
+# Set directory permissions (should work without sudo if you own the files)
+chmod -R 755 "$DOCKER_MOUNT/appdata" 2>/dev/null || echo -e "${YELLOW}  Warning: Could not chmod appdata${NC}"
+chmod -R 755 "$DOCKER_MOUNT/databases" 2>/dev/null || true
+chmod -R 755 "$DOCKER_MOUNT/downloads" 2>/dev/null || true
+chmod -R 755 "$MEDIA_MOUNT" 2>/dev/null || true
 
 echo -e "${GREEN}✓${NC} Permissions set"
 

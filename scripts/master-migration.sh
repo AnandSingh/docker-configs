@@ -24,10 +24,19 @@ echo -e "${CYAN}║  Automated Migration Script                ║${NC}"
 echo -e "${CYAN}╚════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Check if running as root
+# Check if running as root (optional for NFS with proper user mapping)
 if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}Please run as root: sudo bash master-migration.sh${NC}"
-    exit 1
+    echo -e "${YELLOW}Note: Not running as root.${NC}"
+    echo -e "${YELLOW}This is fine if your NFS shares are mapped to your user (dev:1000).${NC}"
+    echo -e "${YELLOW}If you encounter permission errors, re-run with sudo.${NC}"
+    echo ""
+    read -p "Continue without sudo? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Please re-run with: sudo bash master-migration.sh"
+        exit 0
+    fi
+    echo ""
 fi
 
 # Pre-flight checks

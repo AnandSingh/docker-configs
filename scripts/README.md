@@ -17,7 +17,7 @@ These scripts reorganize your existing NFS-mounted storage for better organizati
 **Purpose:** Creates organized directory structure within existing NFS mounts
 
 ```bash
-sudo bash reorganize-existing-storage.sh
+bash reorganize-existing-storage.sh  # No sudo needed with proper NFS mapping
 ```
 
 Creates:
@@ -48,10 +48,10 @@ Creates:
 
 ```bash
 # Dry run first to see what will happen
-sudo bash migrate-existing-data.sh --dry-run
+bash migrate-existing-data.sh --dry-run
 
 # Actual migration
-sudo bash migrate-existing-data.sh
+bash migrate-existing-data.sh
 ```
 
 ### 3. `update-compose-files.sh`
@@ -75,7 +75,7 @@ Automatically updates:
 **Purpose:** Runs the entire migration process in order
 
 ```bash
-sudo bash master-migration.sh
+bash master-migration.sh  # No sudo needed!
 ```
 
 Executes:
@@ -95,8 +95,8 @@ cd /home/dev/docker/docker-configs/scripts
 # Make scripts executable
 chmod +x *.sh
 
-# Run master migration script
-sudo bash master-migration.sh
+# Run master migration script (no sudo needed!)
+bash master-migration.sh
 ```
 
 ### Option 2: Manual (Step-by-Step)
@@ -105,7 +105,7 @@ sudo bash master-migration.sh
 cd /home/dev/docker/docker-configs/scripts
 
 # Step 1: Reorganize storage
-sudo bash reorganize-existing-storage.sh
+bash reorganize-existing-storage.sh
 
 # Step 2: Stop all services
 cd /home/dev/docker/docker-configs
@@ -117,8 +117,8 @@ docker compose -f rustdesk/docker-compose.yml down
 
 # Step 3: Migrate data (dry run first)
 cd /home/dev/docker/docker-configs/scripts
-sudo bash migrate-existing-data.sh --dry-run
-sudo bash migrate-existing-data.sh
+bash migrate-existing-data.sh --dry-run
+bash migrate-existing-data.sh
 
 # Step 4: Update compose files
 bash update-compose-files.sh

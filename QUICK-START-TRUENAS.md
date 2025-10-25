@@ -47,7 +47,7 @@ To this better structure:
 
 ```bash
 cd /home/dev/docker/docker-configs/scripts
-sudo bash master-migration.sh
+bash master-migration.sh  # No sudo needed if NFS is mapped to your user!
 ```
 
 This runs everything automatically:
@@ -115,9 +115,8 @@ Create 3 snapshot tasks:
 # Check data was copied
 ls -la /home/dev/docker/appdata/traefik/config/
 
-# Check permissions
-sudo chown -R 1000:1000 /home/dev/docker/appdata
-sudo chmod -R 755 /home/dev/docker/appdata
+# Check permissions (usually not needed with proper NFS mapping)
+chmod -R 755 /home/dev/docker/appdata 2>/dev/null || true
 ```
 
 ### Restore from backup
@@ -155,7 +154,7 @@ If you prefer manual control over automated:
 cd /home/dev/docker/docker-configs/scripts
 
 # Step 1: Create directory structure
-sudo bash reorganize-existing-storage.sh
+bash reorganize-existing-storage.sh
 
 # Step 2: Stop all services manually
 cd /home/dev/docker/docker-configs
@@ -167,8 +166,8 @@ docker compose -f rustdesk/docker-compose.yml down
 
 # Step 3: Migrate data (dry run first)
 cd /home/dev/docker/docker-configs/scripts
-sudo bash migrate-existing-data.sh --dry-run
-sudo bash migrate-existing-data.sh
+bash migrate-existing-data.sh --dry-run
+bash migrate-existing-data.sh
 
 # Step 4: Update compose files
 bash update-compose-files.sh
@@ -185,7 +184,7 @@ Just run:
 
 ```bash
 cd /home/dev/docker/docker-configs/scripts
-sudo bash master-migration.sh
+bash master-migration.sh  # No sudo needed!
 ```
 
 The script will guide you through each step with clear prompts and confirmations.
