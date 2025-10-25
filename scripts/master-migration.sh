@@ -229,6 +229,7 @@ for service in "${services[@]}"; do
             echo -e "${GREEN}✓${NC} $service_name configuration is valid"
         else
             echo -e "${RED}✗${NC} $service_name configuration has errors"
+            docker compose -f "$service" config 2>&1 | tail -10
             validation_failed=true
         fi
     fi
