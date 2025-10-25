@@ -29,6 +29,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Create temporary .env files for validation
+        run: |
+          # Create temporary .env files with placeholder values for validation
+          echo "CLOUDFLARE_EMAIL=test@example.com" > traefik/.env
+          echo "CLOUDFLARE_API_TOKEN=test_token" >> traefik/.env
+          echo "DOMAIN=example.com" >> traefik/.env
+          echo "TRAEFIK_DASHBOARD_CREDENTIALS=admin:placeholder" >> traefik/.env
+
+          # Create other .env files if needed
+          touch homepage/.env 2>/dev/null || true
+          touch Piholev6/.env 2>/dev/null || true
+
       - name: Validate Traefik compose
         run: docker compose -f traefik/docker-compose.yaml config > /dev/null
 
@@ -43,7 +55,8 @@ jobs:
 
       - name: Check for secrets in commits
         run: |
-          if grep -r "CLOUDFLARE_API_TOKEN\|TRAEFIK_DASHBOARD_PASSWORD" --include="*.yaml" --include="*.yml" .; then
+          # Check that actual secrets are not hardcoded in compose files
+          if grep -r "CLOUDFLARE_API_TOKEN\|TRAEFIK_DASHBOARD_PASSWORD" --include="*.yaml" --include="*.yml" --exclude-dir=".github" .; then
             echo "⚠️  Warning: Found potential secrets in compose files"
             exit 1
           fi
