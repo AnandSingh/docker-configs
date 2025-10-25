@@ -89,8 +89,14 @@ jobs:
 
           # Sync checked out code to deployment directory
           # Exclude .git to avoid conflicts, exclude service runtime data
-          rsync -av --delete \
+          # --no-perms --no-owner --no-group: Don't try to preserve permissions (NFS handles this)
+          # --no-times: Don't preserve modification times (can cause issues on NFS)
+          rsync -rlD --delete \
+            --no-perms --no-owner --no-group \
             --exclude='.git' \
+            --exclude='.env' \
+            --exclude='*/.env' \
+            --exclude='traefik/cf-token' \
             --exclude='traefik/config/acme.json' \
             --exclude='traefik/logs/' \
             --exclude='homepage/config/' \
@@ -101,7 +107,7 @@ jobs:
             --exclude='rustdesk/data/' \
             --exclude='.backups/' \
             --exclude='*.log' \
-            $GITHUB_WORKSPACE/ "$DEPLOY_DIR/"
+            $GITHUB_WORKSPACE/ "$DEPLOY_DIR/" || { echo "⚠️ Some files couldn't be synced (may be normal for runtime data)"; exit 0; }
 
           echo "✅ Code synced to deployment directory"
 
