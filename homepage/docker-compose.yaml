@@ -1,18 +1,5 @@
+---
 services:
-  dockerproxy:
-    image: ghcr.io/tecnativa/docker-socket-proxy:latest
-    container_name: dockerproxy
-    environment:
-      - CONTAINERS=1 # Allow access to viewing containers
-      - SERVICES=1 # Allow access to viewing services (necessary when using Docker Swarm)
-      - TASKS=1 # Allow access to viewing tasks (necessary when using Docker Swarm)
-      - POST=0 # Disallow any POST operations (effectively read-only)
-    ports:
-      - 127.0.0.1:2375:2375
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro # Mounted as read-only
-    restart: unless-stopped
-
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
@@ -20,28 +7,40 @@ services:
       - 3000:3000
     volumes:
       - ./config:/app/config # Make sure your local config directory exists
-      - /var/run/docker.sock:/var/run/docker.sock # (optional) For docker integrations
+      #- /var/run/docker.sock:/var/run/docker.sock # (optional) For docker integrations
     networks:
       proxy:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.homepage.entrypoints=web"
-      - "traefik.http.routers.homepage.rule=Host(`list.plexlab.site`)"
+      - "traefik.http.routers.homepage.rule=Host(`plexlab.site`)"
       - "traefik.http.routers.homepage.middlewares=default-whitelist@file"
       - "traefik.http.middlewares.homepage-https-redirect.redirectscheme.scheme=https"
       - "traefik.http.routers.homepage.middlewares=homepage-https-redirect"
       - "traefik.http.routers.homepage-secure.entrypoints=websecure"
-      - "traefik.http.routers.homepage-secure.rule=Host(`list.plexlab.site`)"
+      - "traefik.http.routers.homepage-secure.rule=Host(`plexlab.site`)"
       - "traefik.http.routers.homepage-secure.tls=true"
       - "traefik.http.routers.homepage-secure.service=homepage"
       - "traefik.http.services.homepage.loadbalancer.server.port=3000"
      # - "traefik.http.routers.homepage-secure.middlewares=default-whitelist@file" # uncomment if you want to use a Traefik whitelist to restrict access
      # - "traefik.http.routers.homepage-secure.middlewares=authelia@docker" # uncomment if you want to use authelia
      # - "traefik.docker.network=proxy"
-    security_opt:
-      - no-new-privileges:true
     environment:
-      HOMEPAGE_ALLOWED_HOSTS: list.plexlab.site,192.168.10.113:3000 # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
+      HOMEPAGE_ALLOWED_HOSTS: plexlab.site,192.168.10.13:3000 # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
+      PUID: $PUID
+      PGID: $PGID
+      LOG_LEVEL: debug
+      HOMEPAGE_VAR_PROXMOX_USERNAME: ${HOMEPAGE_VAR_PROXMOX_USERNAME}
+      HOMEPAGE_VAR_PROXMOX_PASSWORD: ${HOMEPAGE_VAR_PROXMOX_PASSWORD}
+      HOMEPAGE_VAR_TRUENAS_KEY: ${HOMEPAGE_VAR_TRUENAS_KEY}
+      HOMEPAGE_VAR_PORTAINER_KEY: ${HOMEPAGE_VAR_PORTAINER_KEY}
+      HOMEPAGE_VAR_QBIT_USERNAME: ${HOMEPAGE_VAR_QBIT_USERNAME}
+      HOMEPAGE_VAR_QBIT_PASSWORD: ${HOMEPAGE_VAR_QBIT_PASSWORD}
+
+      HOMEPAGE_VAR_ADGUARD_USER: ${HOMEPAGE_VAR_ADGUARD_USER}
+      HOMEPAGE_VAR_ADGUARD_PASS: ${HOMEPAGE_VAR_ADGUARD_PASS}
+      #HOMEPAGE_VAR_AUTHENTIK_KEY=${HOMEPAGE_VAR_AUTHENTIK_KEY}
+      #HOMEPAGE_VAR_HOMEASSISTANT_KEY=${HOMEPAGE_VAR_HOMEASSISTANT_KEY}
     restart: unless-stopped
 
 networks:
