@@ -100,13 +100,22 @@ docker-configs/
 │
 ├── scripts/
 │   ├── script-code-server.sh       # Generate code-server instances
-│   └── create-code-server-traefil-yml.sh
+│   ├── create-code-server-traefil-yml.sh
+│   ├── master-migration.sh         # TrueNAS storage migration
+│   ├── reorganize-existing-storage.sh
+│   ├── migrate-existing-data.sh
+│   ├── update-compose-files.sh
+│   └── README.md                   # Scripts documentation
+│
+├── docs/
+│   └── TRUENAS-STORAGE-DESIGN.md   # Storage architecture design
 │
 ├── cloudflare-ddns-updater/        # Dynamic DNS updates
 │   ├── cloudflare-ddns-updater.sh
 │   └── README.md
 │
 ├── .env.example                    # Environment template
+├── QUICK-START-TRUENAS.md          # TrueNAS integration guide
 └── README.md                       # This file
 ```
 
@@ -133,6 +142,37 @@ RustDesk (Host Network)
    ├──▶ hbbs (Signal Server)
    └──▶ hbbr (Relay Server)
 ```
+
+## Storage Architecture
+
+### TrueNAS Integration
+
+All Docker services use centralized NFS storage from TrueNAS Scale:
+
+```
+TrueNAS (192.168.10.15)
+   │
+   ├─ nas-pool/nfs-share/docker → /home/dev/docker (Docker host)
+   │  ├── appdata/                # Service configurations
+   │  ├── databases/              # Databases (frequent snapshots)
+   │  └── downloads/              # Download staging
+   │
+   └─ nas-pool/data/media → /media (Docker host)
+      ├── movies/
+      ├── tv/
+      ├── music/
+      └── books/
+```
+
+**Benefits:**
+- ✓ Centralized storage with ZFS benefits
+- ✓ Automated snapshots and replication
+- ✓ Easy data migration and recovery
+- ✓ Scalable storage independent of Docker host
+
+**Quick Start:** See [QUICK-START-TRUENAS.md](QUICK-START-TRUENAS.md) for reorganizing existing storage
+
+**Detailed Guide:** See [docs/TRUENAS-STORAGE-DESIGN.md](docs/TRUENAS-STORAGE-DESIGN.md) for architecture
 
 ## Deployment
 

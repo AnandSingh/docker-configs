@@ -24,6 +24,38 @@
 - ✅ Twingate zero-trust network access
 - ✅ Homepage dashboard with service integrations
 
+### 5. Automated CI/CD Deployment Complete
+- ✅ Self-hosted GitHub Actions runner running as service
+- ✅ Automated deployment on every push to main
+- ✅ Fixed Traefik restart policy
+- ✅ Services deploying cleanly: Traefik, Homepage, RustDesk
+
+---
+
+## 🚀 Current Phase: TrueNAS Integration (Phase 2)
+
+### Goals:
+- Centralized storage on TrueNAS for all Docker services
+- NFS mounts for persistent data
+- Automated snapshots and backups
+- Easy data migration and replication
+
+### Progress:
+- ✅ Gathered TrueNAS information (Scale, IP: 192.168.10.15, pool: nas-pool)
+- ✅ Designed comprehensive dataset structure (see `docs/TRUENAS-STORAGE-DESIGN.md`)
+- ✅ Discovered existing NFS mounts already configured:
+  - `/home/dev/docker` ← `nas-pool/nfs-share/docker`
+  - `/media` ← `nas-pool/data/media`
+- ✅ Created automated migration scripts:
+  - `scripts/reorganize-existing-storage.sh` - Creates organized directory structure
+  - `scripts/migrate-existing-data.sh` - Moves data to new structure
+  - `scripts/update-compose-files.sh` - Updates docker-compose volume paths
+  - `scripts/master-migration.sh` - All-in-one orchestration script
+- ✅ Documentation:
+  - `scripts/README.md` - Comprehensive usage guide
+  - `docs/TRUENAS-STORAGE-DESIGN.md` - Architecture design
+- ⏳ Ready to execute migration on Docker host
+
 ---
 
 ## ✅ Completed Previously (2025-01-24)
