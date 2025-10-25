@@ -86,7 +86,6 @@ jobs:
           HOMEPAGE_DOMAIN: ${{ secrets.HOMEPAGE_DOMAIN }}
           CODE_SERVER_DOMAIN: ${{ secrets.CODE_SERVER_DOMAIN }}
         run: |
-          cd ${{ env.DEPLOY_PATH }}
           bash deploy/deploy.sh ${{ github.event.inputs.service || 'all' }}
 
       - name: Deployment Status
