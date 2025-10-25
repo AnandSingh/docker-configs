@@ -64,9 +64,8 @@ servarr/gluetun/
 # Homepage
 homepage/config/
 
-# Traefik dynamic configs (keep templates only)
-traefik/config/dynamic/*.yml
-!traefik/config/dynamic/*.example.yml
+# Traefik - exclude acme.json and runtime logs only
+# Keep static route configurations
 
 # Cache and temporary runtime files
 **/.cache/
