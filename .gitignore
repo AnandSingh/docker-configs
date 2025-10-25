@@ -1,6 +1,7 @@
 # Service-specific secrets and configuration
 ./traefik/.env
 ./traefik/cf-token
+./traefik/cf-token_*
 ./traefik/config/acme.json
 ./rustdesk/data
 
@@ -12,6 +13,8 @@ deploy/cron-deploy.log
 # Environment files (use .env.example instead)
 .env
 */.env
+!.env.example
+!*/.env.example
 .env.local
 .env.*.local
 
@@ -24,7 +27,55 @@ github_deploy*
 # Logs
 *.log
 logs/
-traefik/logs/*.log
+**/logs/
+**/log/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+# Service runtime data and configs
+# Jellyfin
+jellyfin/config/
+jellyfin/jellyseerr/
+jellyfin/jellystat/
+
+# Servarr stack
+servarr/*/config/
+servarr/*/config.xml
+servarr/*/Backups/
+servarr/*/asp/
+servarr/*/Sentry/
+servarr/*/Definitions/
+servarr/bazarr/
+servarr/lidarr/
+servarr/prowlarr/
+servarr/radarr/
+servarr/sonarr/
+servarr/qbittorrent/
+servarr/nzbget/
+servarr/gluetun/
+
+# Homepage
+homepage/config/
+
+# Traefik dynamic configs (keep templates only)
+traefik/config/dynamic/*.yml
+!traefik/config/dynamic/*.example.yml
+
+# Cache and temporary runtime files
+**/.cache/
+**/.aspnet/
+**/__pycache__/
+**/__processing/
+*.pid
+*.lock
+lockfile
 
 # macOS
 .DS_Store
