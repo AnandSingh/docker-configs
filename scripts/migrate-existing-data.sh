@@ -76,14 +76,14 @@ move_data() {
     fi
 
     if [ "$DRY_RUN" = true ]; then
-        echo -e "${YELLOW}⊙${NC} Would move: $source → $dest"
+        echo -e "${YELLOW}⊙${NC} Would copy: $source → $dest"
         du -sh "$source" 2>/dev/null | awk '{print "  Size: " $1}'
     else
-        echo -e "${BLUE}Moving $description...${NC}"
-        rsync -a --remove-source-files "$source/" "$dest/"
-        # Remove empty source directory
-        find "$source" -type d -empty -delete 2>/dev/null || true
-        echo -e "${GREEN}✓${NC} Moved $description"
+        echo -e "${BLUE}Copying $description...${NC}"
+        # Copy instead of move to avoid NFS lock file issues
+        rsync -a "$source/" "$dest/" 2>&1 | grep -v "\.nfs" || true
+        echo -e "${GREEN}✓${NC} Copied $description"
+        echo -e "${YELLOW}  Note: Original files left in place (safe to delete later)${NC}"
     fi
 }
 
@@ -177,7 +177,7 @@ echo -e "${GREEN}========================================${NC}"
 echo ""
 
 if [ "$DRY_RUN" = true ]; then
-    echo -e "${YELLOW}This was a DRY RUN. No data was moved.${NC}"
+    echo -e "${YELLOW}This was a DRY RUN. No data was copied.${NC}"
     echo -e "${YELLOW}Run without --dry-run to perform actual migration.${NC}"
 else
     echo -e "${BLUE}Data Location:${NC}"
@@ -186,8 +186,13 @@ else
     echo "  Downloads:       $DOCKER_MOUNT/downloads/"
     echo "  Media:           /media/"
     echo ""
+    echo -e "${YELLOW}Important: Original files were COPIED (not moved)${NC}"
+    echo "  Old data remains in docker-configs subdirectories"
+    echo "  You can delete it after confirming services work"
+    echo "  NFS lock files (.nfs*) will clear automatically"
+    echo ""
     echo -e "${YELLOW}Next Steps:${NC}"
-    echo "1. Verify data was moved correctly:"
+    echo "1. Verify data was copied correctly:"
     echo "   ls -la $DOCKER_MOUNT/appdata/"
     echo ""
     echo "2. Update docker-compose files:"
@@ -197,4 +202,7 @@ else
     echo "   cd $DOCKER_CONFIGS"
     echo "   docker compose -f traefik/docker-compose.yaml up -d"
     echo "   docker compose logs -f traefik"
+    echo ""
+    echo "4. Clean up old data (after testing, optional):"
+    echo "   # Wait 24 hours for NFS locks to clear, or just reboot"
 fi
