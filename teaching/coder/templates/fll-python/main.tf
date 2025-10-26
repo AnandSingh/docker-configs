@@ -32,6 +32,9 @@ resource "coder_agent" "main" {
     #!/bin/bash
     set -e
 
+    # Wait for container to be ready
+    sleep 2
+
     # Start code-server (already installed in image)
     code-server --auth none --port 13337 --user-data-dir /home/coder/.local/share/code-server >/tmp/code-server.log 2>&1 &
 
@@ -49,6 +52,23 @@ resource "coder_agent" "main" {
   }
 }
 
+# App for code-server
+resource "coder_app" "code-server" {
+  agent_id     = coder_agent.main.id
+  slug         = "code-server"
+  display_name = "VS Code"
+  url          = "http://localhost:13337"
+  icon         = "/icon/code.svg"
+  subdomain    = false
+  share        = "owner"
+
+  healthcheck {
+    url       = "http://localhost:13337/healthz"
+    interval  = 5
+    threshold = 6
+  }
+}
+
 resource "docker_image" "workspace" {
   name = "fll-python:latest"
   keep_locally = true
@@ -62,6 +82,15 @@ resource "docker_container" "workspace" {
   # CPU and Memory limits
   cpu_shares = 2048  # 2 cores equivalent
   memory     = 2048  # 2GB RAM
+
+  # Run the Coder agent init script
+  command = [
+    "sh", "-c",
+    <<-EOT
+    # Download and run Coder agent
+    ${coder_agent.main.init_script}
+    EOT
+  ]
 
   # Environment variables
   env = [

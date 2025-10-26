@@ -124,5 +124,5 @@ RUN echo '#!/usr/bin/zsh' > /home/coder/.welcome.sh && \
 # Add welcome to zshrc
 RUN echo 'bash ~/.welcome.sh' >> /home/coder/.zshrc
 
-# Default command
-CMD ["/bin/bash"]
+# Coder agent will override CMD, so this is just a fallback
+CMD ["/bin/bash", "-c", "sleep infinity"]
