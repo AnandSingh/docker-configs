@@ -1,0 +1,12 @@
+http:
+  routers:
+    farish-code-server:
+      rule: "Host(`farish.lab.nexuswarrior.site`)"
+      entryPoints:
+        - websecure
+      service: farish-code-server
+  services:
+    farish-code-server:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.29:8445"

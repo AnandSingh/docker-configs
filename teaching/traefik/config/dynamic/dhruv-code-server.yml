@@ -1,0 +1,12 @@
+http:
+  routers:
+    dhruv-code-server:
+      rule: "Host(`dhruv.lab.nexuswarrior.site`)"
+      entryPoints:
+        - websecure
+      service: dhruv-code-server
+  services:
+    dhruv-code-server:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.29:8446"

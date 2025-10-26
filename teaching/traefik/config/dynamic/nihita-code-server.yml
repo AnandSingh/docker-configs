@@ -1,0 +1,12 @@
+http:
+  routers:
+    nihita-code-server:
+      rule: "Host(`nihita.lab.nexuswarrior.site`)"
+      entryPoints:
+        - websecure
+      service: nihita-code-server
+  services:
+    nihita-code-server:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.10.29:8448"
