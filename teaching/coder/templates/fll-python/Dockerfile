@@ -4,12 +4,9 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/Los_Angeles
 
-# Create coder user
-RUN useradd -m -s /bin/bash coder && \
-    echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
-# Install system dependencies
+# Install system dependencies (including sudo first)
 RUN apt-get update && apt-get install -y \
+    sudo \
     curl \
     wget \
     git \
@@ -23,12 +20,16 @@ RUN apt-get update && apt-get install -y \
     htop \
     net-tools \
     iputils-ping \
-    sudo \
     ca-certificates \
     zsh \
     docker.io \
     openssh-client \
     && rm -rf /var/lib/apt/lists/*
+
+# Create coder user and add to sudoers (after sudo is installed)
+RUN useradd -m -s /bin/bash coder && \
+    echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/coder && \
+    chmod 0440 /etc/sudoers.d/coder
 
 # Set Python 3.11 as default
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \

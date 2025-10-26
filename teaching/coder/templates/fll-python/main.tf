@@ -57,7 +57,7 @@ resource "docker_image" "workspace" {
 resource "docker_container" "workspace" {
   count = data.coder_workspace.me.start_count
   image = docker_image.workspace.name
-  name  = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+  name = "coder-${lower(data.coder_workspace.me.name)}-${substr(data.coder_workspace.me.id, 0, 8)}"
 
   # CPU and Memory limits
   cpu_shares = 2048  # 2 cores equivalent
@@ -81,7 +81,7 @@ resource "docker_container" "workspace" {
 }
 
 resource "docker_volume" "workspace" {
-  name = "coder-${data.coder_workspace.me.owner}-${data.coder_workspace.me.name}"
+  name = "coder-${lower(data.coder_workspace.me.name)}-${substr(data.coder_workspace.me.id, 0,8)}"
 }
 
 resource "coder_metadata" "container_info" {
