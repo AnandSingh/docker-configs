@@ -1,32 +1,30 @@
 name: traefik
-secrets:
-  cf-token:
-    file: ./cf-token
+
 services:
   traefik:
     image: traefik:latest
     container_name: traefik
-    restart: always
+    restart: unless-stopped
     networks:
-       proxy:
+      - proxy
     ports:
       - "80:80"
       - "443:443"
     env_file:
-      - .env # store other secrets e.g., dashboard password
-    secrets:
-      - cf-token # the secret ss
+      - .env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./config/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./config/dynamic:/etc/traefik/dynamic:ro
       - ./config/acme.json:/acme.json
     environment:
-      - TRAEFIK_DASHBOARD_CREDENTIALS=${TRAEFIK_DASHBOARD_CREDENTIALS}
-      - CF_API_EMAIL=anand.krs@gmail.com # Cloudflare email
-      # - CF_DNS_API_TOKEN=YOUR-TOKEN # Cloudflare API Token
-      - CF_DNS_API_TOKEN_FILE=/run/secrets/cf-token # see https://doc.traefik.io/traefik/https/acme/#providers
-      # token file is the proper way to do it
+      # Cloudflare DNS Challenge
+      - CF_API_EMAIL=${CLOUDFLARE_EMAIL}
+      - CF_DNS_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      # Traefik Dashboard Auth (used in traefik.yml)
+      - TRAEFIK_DASHBOARD_USER=${TRAEFIK_DASHBOARD_USER}
+      - TRAEFIK_DASHBOARD_PASSWORD=${TRAEFIK_DASHBOARD_PASSWORD}
+
 networks:
   proxy:
-    external: true # or comment this line to auto create the network
+    external: true
