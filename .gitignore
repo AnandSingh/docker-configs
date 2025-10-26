@@ -1,14 +1,29 @@
-# Service-specific secrets and configuration
-./traefik/.env
-./traefik/cf-token
-./traefik/cf-token_*
-./traefik/config/acme.json
-./rustdesk/data
+# Homelab service secrets and configuration (192.168.10.13)
+homelab/traefik/.env
+homelab/traefik/cf-token
+homelab/traefik/cf-token_*
+homelab/traefik/config/acme.json
+homelab/rustdesk/data
+
+# Teaching VM secrets and configuration (192.168.10.29)
+teaching/traefik/.env
+teaching/traefik/cf-token
+teaching/traefik/cf-token_*
+teaching/traefik/config/acme.json
+teaching/rustdesk/data/
+teaching/coder/.env
+teaching/scripts/*-code-server.yml
+teaching/traefik/config/dynamic/*-code-server.yml
 
 # Deployment artifacts
 .backups/
 deploy/deploy.log
 deploy/cron-deploy.log
+
+# Documentation and planning (keep local, don't commit to public repo)
+docs/
+PROGRESS.md
+TEACHING-VM-ANALYSIS.md
 
 # Environment files (use .env.example instead)
 .env
@@ -41,28 +56,28 @@ logs/
 
 # Service runtime data and configs
 # Jellyfin
-jellyfin/config/
-jellyfin/jellyseerr/
-jellyfin/jellystat/
+homelab/jellyfin/config/
+homelab/jellyfin/jellyseerr/
+homelab/jellyfin/jellystat/
 
 # Servarr stack
-servarr/*/config/
-servarr/*/config.xml
-servarr/*/Backups/
-servarr/*/asp/
-servarr/*/Sentry/
-servarr/*/Definitions/
-servarr/bazarr/
-servarr/lidarr/
-servarr/prowlarr/
-servarr/radarr/
-servarr/sonarr/
-servarr/qbittorrent/
-servarr/nzbget/
-servarr/gluetun/
+homelab/servarr/*/config/
+homelab/servarr/*/config.xml
+homelab/servarr/*/Backups/
+homelab/servarr/*/asp/
+homelab/servarr/*/Sentry/
+homelab/servarr/*/Definitions/
+homelab/servarr/bazarr/
+homelab/servarr/lidarr/
+homelab/servarr/prowlarr/
+homelab/servarr/radarr/
+homelab/servarr/sonarr/
+homelab/servarr/qbittorrent/
+homelab/servarr/nzbget/
+homelab/servarr/gluetun/
 
 # Homepage
-homepage/config/
+homelab/homepage/config/
 
 # Traefik - exclude acme.json and runtime logs only
 # Keep static route configurations

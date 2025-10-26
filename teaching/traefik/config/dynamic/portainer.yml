@@ -1,0 +1,16 @@
+http:
+  routers:
+    portainer:
+      rule: "Host(`portainer.lab.nexuswarrior.site`)"
+      entryPoints:
+        - websecure
+      service: portainer
+  services:
+    portainer:
+      loadBalancer:
+        servers:
+          - url: "https://192.168.10.29:9443"
+        serversTransport: portainerTransport
+  serversTransports:
+    portainerTransport:
+      insecureSkipVerify: true

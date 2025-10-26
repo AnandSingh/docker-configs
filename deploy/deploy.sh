@@ -179,9 +179,13 @@ main() {
     # Create necessary directories
     mkdir -p "$BACKUP_DIR"
 
-    # Update repository
-    if ! update_repo && [ "$SERVICE" != "all" ]; then
-        log_info "No updates available, checking service status..."
+    # Update repository (skip if not a git repo - GitHub Actions handles updates)
+    if [ -d "$REPO_DIR/.git" ]; then
+        if ! update_repo && [ "$SERVICE" != "all" ]; then
+            log_info "No updates available, checking service status..."
+        fi
+    else
+        log_info "Code synced by CI/CD pipeline, skipping git pull"
     fi
 
     # Setup secrets from environment variables

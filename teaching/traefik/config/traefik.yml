@@ -1,0 +1,38 @@
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entrypoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: "lab.nexuswarrior.site"
+            sans:
+              - "*.lab.nexuswarrior.site"
+providers:
+  file:
+    directory: "/etc/traefik/dynamic"
+    watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      # caServer: https://acme-v02.api.letsencrypt.org/directory # production (default)
+      # caServer: https://acme-staging-v02.api.letsencrypt.org/directory # staging (testing)
+      email: anand.krs@gmail.com
+      storage: acme.json
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"
+
+api:
+  dashboard: true
+  insecure: true
