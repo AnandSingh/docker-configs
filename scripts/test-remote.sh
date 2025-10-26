@@ -169,7 +169,7 @@ echo -e "${YELLOW}[4/5] Testing HTTP to HTTPS Redirect...${NC}"
 echo ""
 
 FIRST_DOMAIN=$(echo "${SERVICES[0]}" | cut -d: -f1)
-HTTP_REDIRECT=$(curl -s -o /dev/null -w "%{http_code}" -L --max-redirs 0 "http://$FIRST_DOMAIN" 2>/dev/null || echo "000")
+HTTP_REDIRECT=$(curl -s -o /dev/null -w "%{http_code}" -I "http://$FIRST_DOMAIN" 2>/dev/null || echo "000")
 
 if [ "$HTTP_REDIRECT" = "301" ] || [ "$HTTP_REDIRECT" = "308" ]; then
     print_result "PASS" "HTTP redirects to HTTPS (Status: $HTTP_REDIRECT)"
