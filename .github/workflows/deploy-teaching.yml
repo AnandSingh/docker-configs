@@ -58,13 +58,15 @@ jobs:
       - name: Validate RustDesk compose
         run: docker compose -f teaching/rustdesk/docker-compose.yml config > /dev/null
 
-      - name: Check for secrets
+      - name: Check for hardcoded secrets
         run: |
-          if grep -r "CLOUDFLARE_API_TOKEN\|CODER_DB_PASSWORD" --include="*.yaml" --include="*.yml" --exclude-dir=".github" teaching/; then
-            echo "⚠️  Warning: Found potential secrets in compose files"
+          # Check for actual hardcoded secrets (not env variable references)
+          # Exclude patterns like ${VAR} or $VAR which are environment variable references
+          if grep -rE '(CLOUDFLARE_API_TOKEN|CODER_DB_PASSWORD)\s*[:=]\s*["\047][^$\{]' --include="*.yaml" --include="*.yml" --exclude-dir=".github" teaching/; then
+            echo "⚠️  Warning: Found hardcoded secrets in compose files"
             exit 1
           fi
-          echo "✅ No hardcoded secrets found"
+          echo "✅ No hardcoded secrets found (env variable references are OK)"
 
   deploy:
     name: Deploy to Teaching VM
