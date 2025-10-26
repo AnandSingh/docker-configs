@@ -16,6 +16,10 @@ entryPoints:
             sans:
               - "*.lab.nexuswarrior.site"
 providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: proxy
   file:
     directory: "/etc/traefik/dynamic"
     watch: true

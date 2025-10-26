@@ -84,12 +84,8 @@ RUN code-server --install-extension vscode-icons-team.vscode-icons && \
     code-server --install-extension GitHub.vscode-pull-request-github && \
     code-server --install-extension shyykoserhiy.git-autoconfig && \
     code-server --install-extension usernamehw.errorlens && \
-    code-server --install-extension tomoki1207.pdf
-
-# Install Pybricks extension for FLL robotics (custom VSIX)
-COPY pybricks-runner-0.1.5.vsix /tmp/
-RUN code-server --install-extension /tmp/pybricks-runner-0.1.5.vsix && \
-    rm /tmp/pybricks-runner-0.1.5.vsix
+    code-server --install-extension tomoki1207.pdf && \
+    code-server --install-extension AnandSingh.pybricks-runner
 
 # Configure VS Code settings to match kids' current setup
 RUN mkdir -p /home/coder/.local/share/code-server/User && \
