@@ -127,7 +127,7 @@ jobs:
             echo "✅ Code updated to commit: $(git rev-parse --short HEAD)"
 
             # Create Traefik .env
-            cat > teaching/traefik/.env << 'EOF'
+            cat > teaching/traefik/.env << EOF
           CLOUDFLARE_EMAIL=${{ secrets.TEACHING_CLOUDFLARE_EMAIL }}
           CLOUDFLARE_API_TOKEN=${{ secrets.TEACHING_CLOUDFLARE_API_TOKEN }}
           DOMAIN=lab.nexuswarrior.site
@@ -136,7 +136,7 @@ jobs:
           EOF
 
             # Create Coder .env
-            cat > teaching/coder/.env << 'EOF'
+            cat > teaching/coder/.env << EOF
           CODER_DB_PASSWORD=${{ secrets.TEACHING_CODER_DB_PASSWORD }}
           EOF
 
