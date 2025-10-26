@@ -115,6 +115,9 @@ jobs:
           TRAEFIK_DASHBOARD_USER: ${{ secrets.TRAEFIK_DASHBOARD_USER }}
           TRAEFIK_DASHBOARD_PASSWORD: ${{ secrets.TRAEFIK_DASHBOARD_PASSWORD }}
           DOMAIN: ${{ secrets.DOMAIN }}
+          TWINGATE_NETWORK: ${{ secrets.TWINGATE_NETWORK }}
+          TWINGATE_ACCESS_TOKEN: ${{ secrets.TWINGATE_ACCESS_TOKEN }}
+          TWINGATE_REFRESH_TOKEN: ${{ secrets.TWINGATE_REFRESH_TOKEN }}
         run: |
           cd ${{ env.DEPLOY_DIR }}
 
@@ -140,6 +143,21 @@ jobs:
 
           chmod 600 homelab/traefik/.env
           echo "✅ Secrets configured"
+
+          # Create Twingate .env (required for deployment)
+          if [ -z "${TWINGATE_NETWORK}" ] || [ -z "${TWINGATE_ACCESS_TOKEN}" ] || [ -z "${TWINGATE_REFRESH_TOKEN}" ]; then
+            echo "❌ Missing one or more Twingate secrets (TWINGATE_NETWORK, TWINGATE_ACCESS_TOKEN, TWINGATE_REFRESH_TOKEN)"
+            exit 1
+          fi
+
+          cat > homelab/twingate/.env << EOF
+          TWINGATE_NETWORK=${TWINGATE_NETWORK}
+          TWINGATE_ACCESS_TOKEN=${TWINGATE_ACCESS_TOKEN}
+          TWINGATE_REFRESH_TOKEN=${TWINGATE_REFRESH_TOKEN}
+          EOF
+
+          chmod 600 homelab/twingate/.env
+          echo "✅ Twingate secrets configured"
 
       - name: Deploy homelab services
         run: |
