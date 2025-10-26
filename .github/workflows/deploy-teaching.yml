@@ -70,11 +70,16 @@ jobs:
 
   deploy:
     name: Deploy to Teaching VM
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: validate
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     steps:
+      - name: Clean workspace
+        run: |
+          sudo chown -R $USER:$USER $GITHUB_WORKSPACE 2>/dev/null || true
+          sudo git clean -fdx 2>/dev/null || true
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -83,12 +88,16 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.TEACHING_DEPLOY_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ env.TEACHING_HOST }} >> ~/.ssh/known_hosts
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_teaching
+          chmod 600 ~/.ssh/id_teaching
+
+          # Add teaching VM to known_hosts if not already there
+          if ! grep -q "${{ env.TEACHING_HOST }}" ~/.ssh/known_hosts 2>/dev/null; then
+            ssh-keyscan -H ${{ env.TEACHING_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          fi
 
           # Test SSH connection
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no ${{ env.TEACHING_USER }}@${{ env.TEACHING_HOST }} "echo 'SSH connection successful'"
+          ssh -i ~/.ssh/id_teaching -o StrictHostKeyChecking=no ${{ env.TEACHING_USER }}@${{ env.TEACHING_HOST }} "echo '✅ SSH connection successful from homelab runner'"
 
       - name: Deploy to Teaching VM
         env:
@@ -98,7 +107,7 @@ jobs:
           TRAEFIK_DASH_PASSWORD: ${{ secrets.TEACHING_TRAEFIK_DASH_PASSWORD }}
           CODER_DB_PASSWORD: ${{ secrets.TEACHING_CODER_DB_PASSWORD }}
         run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ env.TEACHING_USER }}@${{ env.TEACHING_HOST }} << 'ENDSSH'
+          ssh -i ~/.ssh/id_teaching ${{ env.TEACHING_USER }}@${{ env.TEACHING_HOST }} << 'ENDSSH'
             set -e
 
             # Navigate to repo or clone if doesn't exist
@@ -146,7 +155,7 @@ jobs:
 
       - name: Verify deployment
         run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ env.TEACHING_USER }}@${{ env.TEACHING_HOST }} << 'ENDSSH'
+          ssh -i ~/.ssh/id_teaching ${{ env.TEACHING_USER }}@${{ env.TEACHING_HOST }} << 'ENDSSH'
             cd ${{ env.TEACHING_PATH }}/teaching
 
             echo ""
