@@ -1,0 +1,174 @@
+name: Deploy Teaching VM
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'teaching/**'
+      - 'deploy/deploy.sh'
+      - 'deploy/deploy-teaching.sh'
+      - '.github/workflows/deploy-teaching.yml'
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Specific service to deploy (traefik, coder, rustdesk, or all)'
+        required: false
+        type: string
+        default: 'all'
+
+env:
+  TEACHING_HOST: ${{ secrets.TEACHING_DEPLOY_HOST || '192.168.10.29' }}
+  TEACHING_USER: ${{ secrets.TEACHING_DEPLOY_USER || 'dev' }}
+  TEACHING_PATH: ${{ secrets.TEACHING_DEPLOY_PATH || '/home/dev/docker-configs' }}
+
+jobs:
+  validate:
+    name: Validate Teaching VM Services
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create temporary .env files for validation
+        run: |
+          # Traefik .env
+          mkdir -p teaching/traefik
+          cat > teaching/traefik/.env << EOF
+          CLOUDFLARE_EMAIL=test@example.com
+          CLOUDFLARE_API_TOKEN=test_token
+          DOMAIN=lab.nexuswarrior.site
+          TRAEFIK_DASHBOARD_USER=admin
+          TRAEFIK_DASHBOARD_PASSWORD=test
+          EOF
+
+          # Coder .env
+          mkdir -p teaching/coder
+          echo "CODER_DB_PASSWORD=test_password" > teaching/coder/.env
+
+      - name: Validate Traefik compose
+        run: docker compose -f teaching/traefik/docker-compose.yaml config > /dev/null
+
+      - name: Validate Coder compose
+        run: docker compose -f teaching/coder/docker-compose.yaml config > /dev/null
+
+      - name: Validate RustDesk compose
+        run: docker compose -f teaching/rustdesk/docker-compose.yml config > /dev/null
+
+      - name: Check for secrets
+        run: |
+          if grep -r "CLOUDFLARE_API_TOKEN\|CODER_DB_PASSWORD" --include="*.yaml" --include="*.yml" --exclude-dir=".github" teaching/; then
+            echo "⚠️  Warning: Found potential secrets in compose files"
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets found"
+
+  deploy:
+    name: Deploy to Teaching VM
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.TEACHING_DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ env.TEACHING_HOST }} >> ~/.ssh/known_hosts
+
+          # Test SSH connection
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no ${{ env.TEACHING_USER }}@${{ env.TEACHING_HOST }} "echo 'SSH connection successful'"
+
+      - name: Deploy to Teaching VM
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.TEACHING_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_EMAIL: ${{ secrets.TEACHING_CLOUDFLARE_EMAIL }}
+          TRAEFIK_DASH_USER: ${{ secrets.TEACHING_TRAEFIK_DASH_USER }}
+          TRAEFIK_DASH_PASSWORD: ${{ secrets.TEACHING_TRAEFIK_DASH_PASSWORD }}
+          CODER_DB_PASSWORD: ${{ secrets.TEACHING_CODER_DB_PASSWORD }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 ${{ env.TEACHING_USER }}@${{ env.TEACHING_HOST }} << 'ENDSSH'
+            set -e
+
+            # Navigate to repo or clone if doesn't exist
+            if [ ! -d "${{ env.TEACHING_PATH }}" ]; then
+              echo "Cloning repository..."
+              mkdir -p $(dirname "${{ env.TEACHING_PATH }}")
+              cd $(dirname "${{ env.TEACHING_PATH }}")
+              git clone https://github.com/${{ github.repository }}.git $(basename "${{ env.TEACHING_PATH }}")
+            fi
+
+            cd ${{ env.TEACHING_PATH }}
+
+            # Pull latest changes
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "✅ Code updated to commit: $(git rev-parse --short HEAD)"
+
+            # Create Traefik .env
+            cat > teaching/traefik/.env << 'EOF'
+          CLOUDFLARE_EMAIL=${{ secrets.TEACHING_CLOUDFLARE_EMAIL }}
+          CLOUDFLARE_API_TOKEN=${{ secrets.TEACHING_CLOUDFLARE_API_TOKEN }}
+          DOMAIN=lab.nexuswarrior.site
+          TRAEFIK_DASHBOARD_USER=${{ secrets.TEACHING_TRAEFIK_DASH_USER }}
+          TRAEFIK_DASHBOARD_PASSWORD=${{ secrets.TEACHING_TRAEFIK_DASH_PASSWORD }}
+          EOF
+
+            # Create Coder .env
+            cat > teaching/coder/.env << 'EOF'
+          CODER_DB_PASSWORD=${{ secrets.TEACHING_CODER_DB_PASSWORD }}
+          EOF
+
+            echo "✅ Secrets configured"
+
+            # Create proxy network if doesn't exist
+            docker network inspect proxy >/dev/null 2>&1 || docker network create proxy
+
+            # Deploy services
+            SERVICE="${{ github.event.inputs.service || 'all' }}"
+            echo "Deploying service: $SERVICE"
+            bash deploy/deploy.sh --server teaching "$SERVICE"
+
+            echo "✅ Deployment completed"
+          ENDSSH
+
+      - name: Verify deployment
+        run: |
+          ssh -i ~/.ssh/id_ed25519 ${{ env.TEACHING_USER }}@${{ env.TEACHING_HOST }} << 'ENDSSH'
+            cd ${{ env.TEACHING_PATH }}/teaching
+
+            echo ""
+            echo "=== Deployment Status ==="
+            echo ""
+
+            echo "Traefik:"
+            docker compose -f traefik/docker-compose.yaml ps || echo "Not deployed"
+
+            echo ""
+            echo "Coder:"
+            docker compose -f coder/docker-compose.yaml ps || echo "Not deployed"
+
+            echo ""
+            echo "RustDesk:"
+            docker compose -f rustdesk/docker-compose.yml ps || echo "Not deployed"
+          ENDSSH
+
+      - name: Deployment summary
+        run: |
+          echo "🚀 Teaching VM deployment completed"
+          echo "🖥️  Host: ${{ env.TEACHING_HOST }}"
+          echo "📦 Service: ${{ github.event.inputs.service || 'all' }}"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo "👤 Author: ${{ github.actor }}"
+          echo ""
+          echo "Access Coder: https://coder.lab.nexuswarrior.site"
