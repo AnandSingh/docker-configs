@@ -3,7 +3,8 @@
 # Traefik Testing Script for Teaching VM (192.168.10.29)
 # Tests all configured domains and services
 
-set -e
+# Don't exit on errors - we want to run all tests
+set +e
 
 # Colors for output
 RED='\033[0;31m'
@@ -47,16 +48,16 @@ print_result() {
 
     if [ "$status" = "PASS" ]; then
         echo -e "${GREEN}✓ PASS${NC} - $message"
-        ((PASSED_TESTS++))
+        PASSED_TESTS=$((PASSED_TESTS + 1))
     elif [ "$status" = "FAIL" ]; then
         echo -e "${RED}✗ FAIL${NC} - $message"
-        ((FAILED_TESTS++))
+        FAILED_TESTS=$((FAILED_TESTS + 1))
     elif [ "$status" = "WARN" ]; then
         echo -e "${YELLOW}⚠ WARN${NC} - $message"
     else
         echo -e "${BLUE}ℹ INFO${NC} - $message"
     fi
-    ((TOTAL_TESTS++))
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
 }
 
 # 1. Check if Traefik container is running

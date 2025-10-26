@@ -118,6 +118,16 @@ jobs:
         run: |
           cd ${{ env.DEPLOY_DIR }}
 
+          # Create Cloudflare token file for Traefik
+          echo "${{ secrets.CLOUDFLARE_API_TOKEN }}" > homelab/traefik/cf-token
+          chmod 600 homelab/traefik/cf-token
+          echo "✅ Created cf-token file"
+
+          # Generate htpasswd hash for Traefik dashboard
+          TRAEFIK_DASHBOARD_CREDENTIALS=$(echo "${{ secrets.TRAEFIK_DASHBOARD_PASSWORD }}" | openssl passwd -apr1 -stdin | sed -e 's/\$/\$\$/g')
+          TRAEFIK_DASHBOARD_CREDENTIALS="${{ secrets.TRAEFIK_DASHBOARD_USER }}:${TRAEFIK_DASHBOARD_CREDENTIALS}"
+          echo "✅ Generated dashboard credentials"
+
           # Create Traefik .env
           cat > homelab/traefik/.env << EOF
           CLOUDFLARE_EMAIL=${{ secrets.CLOUDFLARE_EMAIL }}
@@ -125,8 +135,10 @@ jobs:
           DOMAIN=${{ secrets.DOMAIN }}
           TRAEFIK_DASHBOARD_USER=${{ secrets.TRAEFIK_DASHBOARD_USER }}
           TRAEFIK_DASHBOARD_PASSWORD=${{ secrets.TRAEFIK_DASHBOARD_PASSWORD }}
+          TRAEFIK_DASHBOARD_CREDENTIALS=${TRAEFIK_DASHBOARD_CREDENTIALS}
           EOF
 
+          chmod 600 homelab/traefik/.env
           echo "✅ Secrets configured"
 
       - name: Deploy homelab services

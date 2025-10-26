@@ -3,7 +3,8 @@
 # Traefik Testing Script for Homelab Server (192.168.10.13)
 # Tests all configured domains and services
 
-set -e
+# Don't exit on errors - we want to run all tests
+set +e
 
 # Colors for output
 RED='\033[0;31m'
@@ -53,16 +54,16 @@ print_result() {
 
     if [ "$status" = "PASS" ]; then
         echo -e "${GREEN}✓ PASS${NC} - $message"
-        ((PASSED_TESTS++))
+        PASSED_TESTS=$((PASSED_TESTS + 1))
     elif [ "$status" = "FAIL" ]; then
         echo -e "${RED}✗ FAIL${NC} - $message"
-        ((FAILED_TESTS++))
+        FAILED_TESTS=$((FAILED_TESTS + 1))
     elif [ "$status" = "WARN" ]; then
         echo -e "${YELLOW}⚠ WARN${NC} - $message"
     else
         echo -e "${BLUE}ℹ INFO${NC} - $message"
     fi
-    ((TOTAL_TESTS++))
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
 }
 
 # 1. Check if Traefik container is running
@@ -186,8 +187,10 @@ echo -e "${GREEN}Passed:       $PASSED_TESTS${NC}"
 echo -e "${RED}Failed:       $FAILED_TESTS${NC}"
 echo ""
 
-SUCCESS_RATE=$((PASSED_TESTS * 100 / TOTAL_TESTS))
-echo -e "${BLUE}Success Rate: $SUCCESS_RATE%${NC}"
+if [ $TOTAL_TESTS -gt 0 ]; then
+    SUCCESS_RATE=$((PASSED_TESTS * 100 / TOTAL_TESTS))
+    echo -e "${BLUE}Success Rate: $SUCCESS_RATE%${NC}"
+fi
 
 if [ $FAILED_TESTS -eq 0 ]; then
     echo -e "${GREEN}✓ All tests passed! Traefik is working correctly.${NC}"
