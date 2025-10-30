@@ -16,6 +16,11 @@ variable "docker_host" {
   sensitive   = true
 }
 
+variable "github_token" {
+  description = "GitHub Personal Access Token for cloning repositories"
+  sensitive   = true
+}
+
 provider "docker" {
   host = var.docker_host
 }
@@ -28,6 +33,7 @@ data "coder_workspace" "me" {}
 resource "coder_agent" "main" {
   os             = "linux"
   arch           = "amd64"
+  auth           = "token"
   startup_script = <<-EOT
     #!/bin/bash
     set -e
@@ -35,10 +41,33 @@ resource "coder_agent" "main" {
     # Wait for container to be ready
     sleep 2
 
-    # Start code-server (already installed in image)
-    code-server --auth none --port 13337 --user-data-dir /home/coder/.local/share/code-server >/tmp/code-server.log 2>&1 &
+    # Setup git credentials with token
+    if [ -n "$GITHUB_TOKEN" ]; then
+      echo "https://$GITHUB_TOKEN@github.com" > /home/coder/.git-credentials
+      chmod 600 /home/coder/.git-credentials
+    fi
+
+    # Clone or update the robotics repository
+    if [ ! -d "/home/coder/robotics/.git" ]; then
+      echo "📥 Cloning robotics repository..."
+      git clone https://github.com/asingh-io/robotics.git /home/coder/robotics
+
+      # Install dependencies after cloning
+      if [ -f /home/coder/robotics/requirements.txt ]; then
+        echo "📦 Installing Python dependencies..."
+        pip install --no-cache-dir -r /home/coder/robotics/requirements.txt
+      fi
+    else
+      echo "📥 Pulling latest code from GitHub..."
+      cd /home/coder/robotics
+      git pull origin main || echo "Could not pull latest changes (will use existing code)"
+    fi
+
+    # Start code-server with robotics folder opened
+    code-server --auth none --port 13337 --user-data-dir /home/coder/.local/share/code-server /home/coder/robotics >/tmp/code-server.log 2>&1 &
 
     echo "🚀 Code-server starting on port 13337..."
+    echo "📁 Opening robotics folder..."
     echo "📝 Logs: tail -f /tmp/code-server.log"
   EOT
 
@@ -87,8 +116,17 @@ resource "docker_container" "workspace" {
   command = [
     "sh", "-c",
     <<-EOT
-    # Download and run Coder agent
-    ${coder_agent.main.init_script} &
+    set -e
+    # Replace HTTPS URLs with HTTP URLs in the init script
+    cat > /tmp/agent-init.sh << 'AGENT_SCRIPT'
+${coder_agent.main.init_script}
+AGENT_SCRIPT
+    # Replace external HTTPS URL with internal HTTP URL
+    sed -i 's|https://coder.lab.nexuswarrior.site|http://coder:3000|g' /tmp/agent-init.sh
+    # Run the modified agent init script
+    sh /tmp/agent-init.sh > /tmp/coder-agent.log 2>&1 &
+    # Wait a moment for agent to start
+    sleep 2
     # Keep container alive
     exec sleep infinity
     EOT
@@ -97,6 +135,8 @@ resource "docker_container" "workspace" {
   # Environment variables
   env = [
     "CODER_AGENT_TOKEN=${coder_agent.main.token}",
+    "CODER_AGENT_URL=http://coder:3000",
+    "GITHUB_TOKEN=${var.github_token}",
   ]
 
   # Workspace storage
@@ -108,6 +148,10 @@ resource "docker_container" "workspace" {
   host {
     host = "host.docker.internal"
     ip   = "host-gateway"
+  }
+
+  networks_advanced {
+    name = "proxy"
   }
 }
 

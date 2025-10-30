@@ -108,17 +108,32 @@ RUN echo 'export SHELL=/usr/bin/zsh' >> /home/coder/.bashrc
 # Create project structure
 RUN mkdir -p /home/coder/projects /home/coder/workspace
 
+# Setup directory for repo (will be cloned on first startup with credentials)
+RUN mkdir -p /home/coder/robotics && \
+    chown -R coder:coder /home/coder/robotics
+
+# Configure git credential helper to use stored credentials
+RUN git config --global credential.helper 'store --file /home/coder/.git-credentials'
+
+# Configure git for the workspace
+RUN git config --global user.name "Nexus Warrior" && \
+    git config --global user.email "fll@lab.local" && \
+    git config --global pull.rebase false && \
+    git config --global init.defaultBranch main
+
 # Create a welcome script for zsh
 RUN echo '#!/usr/bin/zsh' > /home/coder/.welcome.sh && \
     echo 'echo "🤖 Welcome to FLL Python Workspace!"' >> /home/coder/.welcome.sh && \
     echo 'echo "Python: $(python --version)"' >> /home/coder/.welcome.sh && \
     echo 'echo "Robot Framework: $(robot --version | head -1)"' >> /home/coder/.welcome.sh && \
     echo 'echo ""' >> /home/coder/.welcome.sh && \
-    echo 'echo "📁 Your workspace: ~/workspace/"' >> /home/coder/.welcome.sh && \
+    echo 'echo "📁 Your code: ~/robotics/"' >> /home/coder/.welcome.sh && \
+    echo 'echo "🔧 Work in your folder: ~/robotics/<your-name>/"' >> /home/coder/.welcome.sh && \
+    echo 'echo ""' >> /home/coder/.welcome.sh && \
     echo 'echo "💡 Quick commands:"' >> /home/coder/.welcome.sh && \
-    echo 'echo "   python - Start Python"' >> /home/coder/.welcome.sh && \
-    echo 'echo "   jupyter notebook - Start Jupyter"' >> /home/coder/.welcome.sh && \
-    echo 'echo "   robot --help - Robot Framework help"' >> /home/coder/.welcome.sh && \
+    echo 'echo "   cd ~/robotics - Go to robot code"' >> /home/coder/.welcome.sh && \
+    echo 'echo "   python robot.py - Run your robot code"' >> /home/coder/.welcome.sh && \
+    echo 'echo "   Use VS Code tasks for git push/pull"' >> /home/coder/.welcome.sh && \
     chmod +x /home/coder/.welcome.sh
 
 # Add welcome to zshrc
