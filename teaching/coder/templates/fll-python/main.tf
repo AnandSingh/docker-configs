@@ -88,7 +88,9 @@ resource "docker_container" "workspace" {
     "sh", "-c",
     <<-EOT
     # Download and run Coder agent
-    ${coder_agent.main.init_script}
+    ${coder_agent.main.init_script} &
+    # Keep container alive
+    exec sleep infinity
     EOT
   ]
 

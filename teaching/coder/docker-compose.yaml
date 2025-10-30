@@ -28,6 +28,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /home/dev/docker/coder/data:/home/coder/.config/coderv2
+    group_add:
+      - "988"
 
     labels:
       # Traefik configuration
