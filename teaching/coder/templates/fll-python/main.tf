@@ -21,6 +21,11 @@ variable "github_token" {
   sensitive   = true
 }
 
+variable "github_repo_url" {
+  description = "GitHub repository URL (without https://)"
+  default     = "github.com/AnandSingh/robotics"
+}
+
 provider "docker" {
   host = var.docker_host
 }
@@ -42,15 +47,17 @@ resource "coder_agent" "main" {
     sleep 2
 
     # Setup git credentials with token
-    if [ -n "$GITHUB_TOKEN" ]; then
-      echo "https://$GITHUB_TOKEN@github.com" > /home/coder/.git-credentials
+    if [ -n "$GITHUB_TOKEN" ] && [ -n "$GITHUB_REPO_URL" ]; then
+      # Extract domain from GITHUB_REPO_URL (e.g., github.com)
+      REPO_DOMAIN=$(echo "$GITHUB_REPO_URL" | cut -d'/' -f1)
+      echo "https://$GITHUB_TOKEN@$REPO_DOMAIN" > /home/coder/.git-credentials
       chmod 600 /home/coder/.git-credentials
     fi
 
     # Clone or update the robotics repository
     if [ ! -d "/home/coder/robotics/.git" ]; then
-      echo "📥 Cloning robotics repository..."
-      git clone https://github.com/asingh-io/robotics.git /home/coder/robotics
+      echo "📥 Cloning robotics repository from $GITHUB_REPO_URL..."
+      git clone https://$GITHUB_REPO_URL.git /home/coder/robotics
 
       # Install dependencies after cloning
       if [ -f /home/coder/robotics/requirements.txt ]; then
@@ -137,6 +144,7 @@ AGENT_SCRIPT
     "CODER_AGENT_TOKEN=${coder_agent.main.token}",
     "CODER_AGENT_URL=http://coder:3000",
     "GITHUB_TOKEN=${var.github_token}",
+    "GITHUB_REPO_URL=${var.github_repo_url}",
   ]
 
   # Workspace storage
