@@ -106,8 +106,18 @@ jobs:
           TRAEFIK_DASH_USER: ${{ secrets.TEACHING_TRAEFIK_DASH_USER }}
           TRAEFIK_DASH_PASSWORD: ${{ secrets.TEACHING_TRAEFIK_DASH_PASSWORD }}
           CODER_DB_PASSWORD: ${{ secrets.TEACHING_CODER_DB_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.TEACHING_GITHUB_TOKEN }}
+          GITHUB_REPO_URL: ${{ secrets.TEACHING_GITHUB_REPO_URL }}
         run: |
-          ssh -i ~/.ssh/id_teaching ${{ env.TEACHING_USER }}@${{ env.TEACHING_HOST }} << 'ENDSSH'
+          ssh -i ~/.ssh/id_teaching ${{ env.TEACHING_USER }}@${{ env.TEACHING_HOST }} \
+            "CLOUDFLARE_EMAIL='${{ env.CLOUDFLARE_EMAIL }}' \
+             CLOUDFLARE_API_TOKEN='${{ env.CLOUDFLARE_API_TOKEN }}' \
+             TRAEFIK_DASH_USER='${{ env.TRAEFIK_DASH_USER }}' \
+             TRAEFIK_DASH_PASSWORD='${{ env.TRAEFIK_DASH_PASSWORD }}' \
+             CODER_DB_PASSWORD='${{ env.CODER_DB_PASSWORD }}' \
+             GITHUB_TOKEN='${{ env.GITHUB_TOKEN }}' \
+             GITHUB_REPO_URL='${{ env.GITHUB_REPO_URL }}' \
+             bash -s" << 'ENDSSH'
             set -e
 
             # Navigate to repo or clone if doesn't exist
@@ -128,19 +138,28 @@ jobs:
 
             # Create Traefik .env
             cat > teaching/traefik/.env << EOF
-          CLOUDFLARE_EMAIL=${{ secrets.TEACHING_CLOUDFLARE_EMAIL }}
-          CLOUDFLARE_API_TOKEN=${{ secrets.TEACHING_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_EMAIL=${CLOUDFLARE_EMAIL}
+          CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
           DOMAIN=lab.nexuswarrior.site
-          TRAEFIK_DASHBOARD_USER=${{ secrets.TEACHING_TRAEFIK_DASH_USER }}
-          TRAEFIK_DASHBOARD_PASSWORD=${{ secrets.TEACHING_TRAEFIK_DASH_PASSWORD }}
+          TRAEFIK_DASHBOARD_USER=${TRAEFIK_DASH_USER}
+          TRAEFIK_DASHBOARD_PASSWORD=${TRAEFIK_DASH_PASSWORD}
           EOF
 
             # Create Coder .env
             cat > teaching/coder/.env << EOF
-          CODER_DB_PASSWORD=${{ secrets.TEACHING_CODER_DB_PASSWORD }}
+          CODER_DB_PASSWORD=${CODER_DB_PASSWORD}
+          GITHUB_TOKEN=${GITHUB_TOKEN}
+          GITHUB_REPO_URL=${GITHUB_REPO_URL}
           EOF
 
             echo "✅ Secrets configured"
+
+            # Rebuild Docker image for FLL Python workspace
+            echo "🔨 Rebuilding FLL Python Docker image..."
+            cd teaching/coder/templates/fll-python
+            docker build -t fll-python:latest .
+            echo "✅ Docker image rebuilt"
+            cd -
 
             # Create proxy network if doesn't exist
             docker network inspect proxy >/dev/null 2>&1 || docker network create proxy
@@ -149,6 +168,15 @@ jobs:
             SERVICE="${{ github.event.inputs.service || 'all' }}"
             echo "Deploying service: $SERVICE"
             bash deploy/deploy.sh --server teaching "$SERVICE"
+
+            # Restart Coder to pick up new configuration and Docker image
+            if [ "$SERVICE" = "all" ] || [ "$SERVICE" = "coder" ]; then
+              echo "🔄 Restarting Coder to load new configuration..."
+              cd teaching/coder
+              docker compose restart coder
+              echo "✅ Coder restarted"
+              cd -
+            fi
 
             echo "✅ Deployment completed"
           ENDSSH
