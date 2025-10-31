@@ -144,8 +144,12 @@ main() {
         log_info "Code synced by CI/CD pipeline, skipping git pull"
     fi
 
-    # Setup secrets
-    setup_secrets
+    # Setup secrets (skip for teaching - handled by GitHub workflow)
+    if [ "$server" == "homelab" ]; then
+        setup_secrets
+    else
+        log_info "Skipping setup-secrets.sh (secrets managed by workflow)"
+    fi
 
     # Route to appropriate deployment script
     case $server in
