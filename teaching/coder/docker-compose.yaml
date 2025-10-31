@@ -44,6 +44,7 @@ services:
       - "traefik.http.routers.coder.entrypoints=websecure"
       - "traefik.http.routers.coder.tls=true"
       - "traefik.http.routers.coder.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.coder.middlewares=bluetooth-permissions@file"
       - "traefik.http.services.coder.loadbalancer.server.port=3000"
 
       # Wildcard for workspaces (*.coder.lab.nexuswarrior.site)
@@ -52,6 +53,7 @@ services:
       - "traefik.http.routers.coder-workspaces.tls=true"
       - "traefik.http.routers.coder-workspaces.tls.certresolver=letsencrypt"
       - "traefik.http.routers.coder-workspaces.service=coder"
+      - "traefik.http.routers.coder-workspaces.middlewares=bluetooth-permissions@file"
 
     networks:
       - proxy

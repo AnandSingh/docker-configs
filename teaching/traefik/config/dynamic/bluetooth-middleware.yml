@@ -1,0 +1,6 @@
+http:
+  middlewares:
+    bluetooth-permissions:
+      headers:
+        customResponseHeaders:
+          Permissions-Policy: "bluetooth=(self)"

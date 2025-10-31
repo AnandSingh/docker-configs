@@ -99,7 +99,8 @@ RUN mkdir -p /home/coder/.local/share/code-server/User && \
     "git.confirmSync": false, \
     "python.formatting.provider": "black", \
     "editor.formatOnSave": true, \
-    "terminal.integrated.defaultProfile.linux": "zsh" \
+    "terminal.integrated.defaultProfile.linux": "zsh", \
+    "pybricksRunner.forceWebBluetooth": true \
 }' > /home/coder/.local/share/code-server/User/settings.json
 
 # Set zsh as default shell
