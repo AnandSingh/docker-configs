@@ -10,12 +10,6 @@ terraform {
 }
 
 # Admin parameters
-variable "docker_host" {
-  description = "Docker host to deploy workspaces"
-  default     = "unix:///var/run/docker.sock"
-  sensitive   = true
-}
-
 variable "github_token" {
   description = "GitHub Personal Access Token for cloning repositories"
   sensitive   = true
@@ -27,7 +21,7 @@ variable "github_repo_url" {
 }
 
 provider "docker" {
-  host = var.docker_host
+  host = "unix:///var/run/docker.sock"
 }
 
 provider "coder" {}
@@ -48,9 +42,10 @@ resource "coder_agent" "main" {
 
     # Setup git credentials with token
     if [ -n "$GITHUB_TOKEN" ] && [ -n "$GITHUB_REPO_URL" ]; then
-      # Extract domain from GITHUB_REPO_URL (e.g., github.com)
+      # Extract domain and username from GITHUB_REPO_URL (e.g., github.com/AnandSingh/robotics)
       REPO_DOMAIN=$(echo "$GITHUB_REPO_URL" | cut -d'/' -f1)
-      echo "https://$GITHUB_TOKEN@$REPO_DOMAIN" > /home/coder/.git-credentials
+      GITHUB_USERNAME=$(echo "$GITHUB_REPO_URL" | cut -d'/' -f2)
+      echo "https://$GITHUB_USERNAME:$GITHUB_TOKEN@$REPO_DOMAIN" > /home/coder/.git-credentials
       chmod 600 /home/coder/.git-credentials
     fi
 
