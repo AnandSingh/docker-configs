@@ -22,6 +22,7 @@ SERVICE="${1:-all}"
 # Service directories in homelab/
 declare -A SERVICES=(
     ["traefik"]="traefik"
+    ["adguard"]="adguard-home"
     ["homepage"]="homepage"
     ["jellyfin"]="jellyfin"
     ["servarr"]="servarr"
@@ -131,6 +132,16 @@ deploy_service() {
         create_backup "$service"
     fi
 
+    # Run pre-deployment setup for specific services
+    if [ "$service" = "adguard" ]; then
+        log_info "Running AdGuard Home pre-deployment setup..."
+        if [ -f "./setup-unbound.sh" ]; then
+            bash ./setup-unbound.sh || log_warning "Setup script failed, continuing anyway"
+        else
+            log_warning "setup-unbound.sh not found, skipping"
+        fi
+    fi
+
     # Pull latest images
     log_info "Pulling latest images for $service..."
     docker compose -f "$compose_file" pull || log_warning "Failed to pull some images"
@@ -158,7 +169,7 @@ deploy_all() {
 
     local failed=0
     # Deploy in dependency order
-    local services_order=("traefik" "homepage" "rustdesk" "jellyfin" "servarr" "twingate")
+    local services_order=("traefik" "adguard" "homepage" "rustdesk" "jellyfin" "servarr" "twingate")
 
     for service in "${services_order[@]}"; do
         if deploy_service "$service"; then

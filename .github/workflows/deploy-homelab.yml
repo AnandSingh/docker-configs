@@ -47,6 +47,9 @@ jobs:
       - name: Validate Homepage compose
         run: docker compose -f homelab/homepage/docker-compose.yaml config > /dev/null
 
+      - name: Validate AdGuard Home compose
+        run: docker compose -f homelab/adguard-home/docker-compose.yaml config > /dev/null
+
       - name: Validate Jellyfin compose
         run: docker compose -f homelab/jellyfin/compose.yaml config > /dev/null
 
