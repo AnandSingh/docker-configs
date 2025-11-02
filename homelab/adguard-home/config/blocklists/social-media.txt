@@ -1,0 +1,127 @@
+# Social Media Blocklist for Kids
+# Blocks major social media platforms and messaging apps
+# Updated: 2025-11-02
+
+# Facebook / Meta
+facebook.com
+*.facebook.com
+*.fbcdn.net
+*.facebook.net
+fb.com
+*.fb.com
+fb.me
+m.facebook.com
+www.facebook.com
+web.facebook.com
+messenger.com
+*.messenger.com
+
+# Instagram
+instagram.com
+*.instagram.com
+*.cdninstagram.com
+*.instagram.net
+
+# WhatsApp
+whatsapp.com
+*.whatsapp.com
+*.whatsapp.net
+web.whatsapp.com
+
+# TikTok
+tiktok.com
+*.tiktok.com
+*.tiktokcdn.com
+*.tiktokv.com
+*.musical.ly
+*.muscdn.com
+*.byteoversea.com
+
+# Snapchat
+snapchat.com
+*.snapchat.com
+*.sc-cdn.net
+*.snap-dev.net
+
+# Twitter / X
+twitter.com
+*.twitter.com
+x.com
+*.x.com
+t.co
+twimg.com
+*.twimg.com
+
+# Reddit
+reddit.com
+*.reddit.com
+*.redd.it
+*.redditstatic.com
+
+# Discord
+discord.com
+*.discord.com
+*.discordapp.com
+*.discord.gg
+discordapp.net
+*.discordapp.net
+
+# Telegram
+telegram.org
+*.telegram.org
+t.me
+web.telegram.org
+
+# YouTube (optional - comment out if needed for educational content)
+# youtube.com
+# *.youtube.com
+# youtu.be
+# *.googlevideo.com
+
+# Twitch
+twitch.tv
+*.twitch.tv
+*.ttvnw.net
+
+# Pinterest
+pinterest.com
+*.pinterest.com
+*.pinimg.com
+
+# Tumblr
+tumblr.com
+*.tumblr.com
+
+# LinkedIn
+linkedin.com
+*.linkedin.com
+*.licdn.com
+
+# BeReal
+bereal.com
+*.bereal.com
+bere.al
+
+# Threads
+threads.net
+*.threads.net
+
+# Mastodon (common instances)
+mastodon.social
+mastodon.online
+*.mastodon.social
+
+# Anonymous Social
+yik-yak.com
+*.yik-yak.com
+whisper.sh
+*.whisper.sh
+ask.fm
+*.ask.fm
+
+# Gaming Social
+roblox.com
+*.roblox.com
+*.rbxcdn.com
+fortnite.com
+*.fortnite.com

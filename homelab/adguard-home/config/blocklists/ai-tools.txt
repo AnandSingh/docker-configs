@@ -1,0 +1,86 @@
+# AI Tools Blocklist for Kids
+# Blocks AI chatbots and homework cheating tools
+# Updated: 2025-11-02
+
+# OpenAI / ChatGPT
+chat.openai.com
+chatgpt.com
+*.chatgpt.com
+openai.com
+*.openai.com
+platform.openai.com
+api.openai.com
+
+# Anthropic / Claude
+claude.ai
+*.claude.ai
+anthropic.com
+*.anthropic.com
+console.anthropic.com
+
+# Google AI
+gemini.google.com
+bard.google.com
+ai.google
+ai.google.com
+aistudio.google.com
+makersuite.google.com
+
+# Microsoft
+copilot.microsoft.com
+bing.com/chat
+*.bing.com/chat
+sydney.bing.com
+
+# Other AI Assistants
+perplexity.ai
+*.perplexity.ai
+you.com
+*.you.com
+poe.com
+*.poe.com
+character.ai
+*.character.ai
+replika.ai
+*.replika.ai
+chai.ml
+*.chai.ml
+
+# AI Writing Tools
+jasper.ai
+*.jasper.ai
+copy.ai
+*.copy.ai
+writesonic.com
+*.writesonic.com
+rytr.me
+*.rytr.me
+contentbot.ai
+*.contentbot.ai
+wordtune.com
+*.wordtune.com
+quillbot.com
+*.quillbot.com
+
+# AI Research/Code Tools
+huggingface.co
+*.huggingface.co
+replit.com/ai
+github.com/copilot
+copilot.github.com
+
+# AI Homework Help
+tutorly.ai
+*.tutorly.ai
+studyai.com
+*.studyai.com
+socratic.org
+*.socratic.org
+
+# General AI Platforms
+runwayml.com
+*.runwayml.com
+midjourney.com
+*.midjourney.com
+stability.ai
+*.stability.ai

@@ -1,0 +1,86 @@
+---
+# AdGuard Home + Unbound DNS Filtering System
+# Comprehensive DNS filtering with parental controls, ad blocking, and privacy
+#
+# Architecture:
+#   Internet → pfSense → AdGuard Home → Unbound → Root DNS Servers
+#
+# Features:
+#   - Ad blocking & tracker blocking
+#   - Adult content filtering
+#   - AI tools blocking (ChatGPT, etc.)
+#   - Social media blocking for kids
+#   - DNSSEC validation via Unbound
+#   - Logs stored on TrueNAS
+#   - Client-specific filtering rules
+
+services:
+  # Unbound - Recursive DNS resolver with DNSSEC validation
+  unbound:
+    container_name: unbound
+    image: mvance/unbound:latest
+    restart: unless-stopped
+    networks:
+      dns_internal:
+        ipv4_address: 172.30.0.2
+    ports:
+      - "5335:53/tcp"
+      - "5335:53/udp"
+    volumes:
+      - ./config/unbound:/opt/unbound/etc/unbound/
+    environment:
+      - TZ=America/Los_Angeles
+    healthcheck:
+      test: ["CMD", "drill", "@127.0.0.1", "cloudflare.com"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+
+  # AdGuard Home - DNS filtering and parental controls
+  adguard:
+    container_name: adguard
+    image: adguard/adguardhome:latest
+    restart: unless-stopped
+    networks:
+      dns_internal:
+        ipv4_address: 172.30.0.3
+      proxy:
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "3053:3000/tcp"  # Initial setup port
+    volumes:
+      # Main config stored on TrueNAS (via existing NFS mount)
+      - ~/docker/appdata/adguard/work:/opt/adguardhome/work
+      - ~/docker/appdata/adguard/conf:/opt/adguardhome/conf
+      # Custom blocklists
+      - ./config/blocklists:/opt/adguardhome/blocklists:ro
+    environment:
+      - TZ=America/Los_Angeles
+    depends_on:
+      - unbound
+    labels:
+      # Traefik integration for HTTPS access
+      - "traefik.enable=true"
+      - "traefik.http.routers.adguard.entrypoints=web"
+      - "traefik.http.routers.adguard.rule=Host(`dns.plexlab.site`)"
+      - "traefik.http.middlewares.adguard-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.adguard.middlewares=adguard-https-redirect"
+      - "traefik.http.routers.adguard-secure.entrypoints=websecure"
+      - "traefik.http.routers.adguard-secure.rule=Host(`dns.plexlab.site`)"
+      - "traefik.http.routers.adguard-secure.tls=true"
+      - "traefik.http.routers.adguard-secure.service=adguard"
+      - "traefik.http.services.adguard.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy"
+
+networks:
+  dns_internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+    name: dns_internal
+  proxy:
+    external: true
