@@ -13,12 +13,12 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.homepage.entrypoints=web"
-      - "traefik.http.routers.homepage.rule=Host(`homepage.plexlab.com`)"
+      - "traefik.http.routers.homepage.rule=Host(`plexlab.site`)"
       - "traefik.http.routers.homepage.middlewares=default-whitelist@file"
       - "traefik.http.middlewares.homepage-https-redirect.redirectscheme.scheme=https"
       - "traefik.http.routers.homepage.middlewares=homepage-https-redirect"
       - "traefik.http.routers.homepage-secure.entrypoints=websecure"
-      - "traefik.http.routers.homepage-secure.rule=Host(`homepage.plexlab.com`)"
+      - "traefik.http.routers.homepage-secure.rule=Host(`plexlab.site`)"
       - "traefik.http.routers.homepage-secure.tls=true"
       - "traefik.http.routers.homepage-secure.service=homepage"
       - "traefik.http.services.homepage.loadbalancer.server.port=3000"
@@ -26,7 +26,7 @@ services:
      # - "traefik.http.routers.homepage-secure.middlewares=authelia@docker" # uncomment if you want to use authelia
      # - "traefik.docker.network=proxy"
     environment:
-      HOMEPAGE_ALLOWED_HOSTS: homepage.plexlab.com,plexlab.com,192.168.10.13:3000,localhost:3000 # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
+      HOMEPAGE_ALLOWED_HOSTS: plexlab.site,192.168.10.13:3000,localhost:3000 # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
       PUID: $PUID
       PGID: $PGID
       LOG_LEVEL: debug
