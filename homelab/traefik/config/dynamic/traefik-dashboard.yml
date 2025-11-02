@@ -1,0 +1,15 @@
+http:
+  routers:
+    traefik:
+      rule: "Host(`traefik.plexlab.site`)"
+      entryPoints:
+        - websecure
+      service: api@internal
+      middlewares:
+        - traefik-auth
+
+  middlewares:
+    traefik-auth:
+      basicAuth:
+        users:
+          - "admin:$apr1$8KBvpKdJ$vf.X0LvyJ6H9yZJQYLZJr1"  # admin:changeme
