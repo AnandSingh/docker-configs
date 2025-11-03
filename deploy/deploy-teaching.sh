@@ -22,6 +22,7 @@ SERVICE="${1:-all}"
 # Service directories in teaching/
 declare -A SERVICES=(
     ["traefik"]="traefik"
+    ["homepage"]="homepage"
     ["coder"]="coder"
     ["rustdesk"]="rustdesk"
 )
@@ -117,8 +118,19 @@ deploy_service() {
     # Check for .env file
     if [ ! -f .env ] && [ -f .env.example ]; then
         log_warning "No .env file found, but .env.example exists"
-        log_warning "Please create .env file with required secrets"
-        return 1
+
+        # Special handling for homepage - it can run without .env (widgets won't work)
+        if [ "$service" = "homepage" ]; then
+            log_warning "Homepage will deploy without widgets. Add .env file to enable service widgets."
+            log_info "Creating minimal .env file with defaults..."
+            cp .env.example .env
+            # Set default values for required vars only
+            sed -i 's/^PUID=.*/PUID=1000/' .env
+            sed -i 's/^PGID=.*/PGID=1000/' .env
+        else
+            log_warning "Please create .env file with required secrets"
+            return 1
+        fi
     fi
 
     # Create backup if service is running
@@ -152,7 +164,7 @@ deploy_all() {
     log_info "Deploying all teaching VM services..."
 
     local failed=0
-    local services_order=("traefik" "coder" "rustdesk")
+    local services_order=("traefik" "homepage" "coder" "rustdesk")
 
     for service in "${services_order[@]}"; do
         if deploy_service "$service"; then
