@@ -76,8 +76,9 @@ homelab/servarr/qbittorrent/
 homelab/servarr/nzbget/
 homelab/servarr/gluetun/
 
-# Homepage
-homelab/homepage/config/
+# Homepage (track yaml configs, ignore runtime data)
+homelab/homepage/config/*.db
+homelab/homepage/config/logs/
 
 # Traefik - exclude acme.json and runtime logs only
 # Keep static route configurations

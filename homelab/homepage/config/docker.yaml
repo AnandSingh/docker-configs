@@ -1,0 +1,13 @@
+---
+# Docker Integration Configuration
+# This allows Homepage to auto-discover and monitor Docker containers
+
+# Local Docker integration (enabled)
+my-docker:
+  host: unix:///var/run/docker.sock
+  socket: /var/run/docker.sock
+
+# To monitor Docker on remote servers, you can expose Docker API over TCP
+# (Make sure to secure it properly!)
+# teaching-server:
+#   host: tcp://teaching-server-ip:2375

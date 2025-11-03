@@ -1,0 +1,46 @@
+---
+# Homepage Services Configuration - Teaching Server
+# This file defines all services for the teaching server
+
+# Teaching Server (lab.nexuswarrior.site)
+- Teaching Infrastructure:
+    - Traefik:
+        icon: traefik.png
+        href: https://traefik.lab.nexuswarrior.site
+        description: Reverse Proxy & Load Balancer
+
+    - Portainer:
+        icon: portainer.png
+        href: https://portainer.lab.nexuswarrior.site
+        description: Container Management
+
+    - Coder:
+        icon: coder.png
+        href: https://coder.lab.nexuswarrior.site
+        description: Cloud Development Environment
+
+    - Proxmox:
+        icon: proxmox.png
+        href: https://proxmox.lab.nexuswarrior.site
+        description: Hypervisor Management
+
+- Student Code Servers:
+    - Gautham:
+        icon: vscode.png
+        href: https://gautham.lab.nexuswarrior.site
+        description: Gautham's Code Server
+
+    - Nihita:
+        icon: vscode.png
+        href: https://nihita.lab.nexuswarrior.site
+        description: Nihita's Code Server
+
+    - Dhruv:
+        icon: vscode.png
+        href: https://dhruv.lab.nexuswarrior.site
+        description: Dhruv's Code Server
+
+    - Farish:
+        icon: vscode.png
+        href: https://farish.lab.nexuswarrior.site
+        description: Farish's Code Server

@@ -1,0 +1,37 @@
+---
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage-teaching
+    ports:
+      - 3001:3000
+    volumes:
+      - ./config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      proxy:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage-teaching.entrypoints=web"
+      - "traefik.http.routers.homepage-teaching.rule=Host(`lab.nexuswarrior.site`)"
+      - "traefik.http.routers.homepage-teaching.middlewares=default-whitelist@file"
+      - "traefik.http.middlewares.homepage-teaching-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.homepage-teaching.middlewares=homepage-teaching-https-redirect"
+      - "traefik.http.routers.homepage-teaching-secure.entrypoints=websecure"
+      - "traefik.http.routers.homepage-teaching-secure.rule=Host(`lab.nexuswarrior.site`)"
+      - "traefik.http.routers.homepage-teaching-secure.tls=true"
+      - "traefik.http.routers.homepage-teaching-secure.service=homepage-teaching"
+      - "traefik.http.services.homepage-teaching.loadbalancer.server.port=3000"
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: lab.nexuswarrior.site,192.168.10.29:3001,localhost:3001
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      LOG_LEVEL: debug
+      HOMEPAGE_VAR_PROXMOX_USERNAME: ${HOMEPAGE_VAR_PROXMOX_USERNAME}
+      HOMEPAGE_VAR_PROXMOX_PASSWORD: ${HOMEPAGE_VAR_PROXMOX_PASSWORD}
+      HOMEPAGE_VAR_PORTAINER_KEY: ${HOMEPAGE_VAR_PORTAINER_KEY}
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true

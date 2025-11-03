@@ -1,0 +1,18 @@
+---
+# Homepage Widgets Configuration
+# These widgets appear at the top of your homepage
+
+- search:
+    provider: google
+    target: _blank
+
+- greeting:
+    text_size: xl
+    text: "Welcome to Teaching Lab Dashboard"
+
+- datetime:
+    text_size: xl
+    format:
+      dateStyle: short
+      timeStyle: short
+      hourCycle: h23

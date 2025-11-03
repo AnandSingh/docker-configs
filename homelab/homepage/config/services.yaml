@@ -1,0 +1,156 @@
+---
+# Homepage Services Configuration
+# This file defines all your services across both servers
+
+# Homelab Server (plexlab.site)
+- Homelab Infrastructure:
+    - Traefik:
+        icon: traefik.png
+        href: https://traefik.plexlab.site
+        description: Reverse Proxy & Load Balancer
+
+    - AdGuard Home:
+        icon: adguard-home.png
+        href: https://dns.plexlab.site
+        description: DNS Filtering & Ad Blocking
+        widget:
+          type: adguard
+          url: http://192.168.10.13:3053
+          username: {{HOMEPAGE_VAR_ADGUARD_USER}}
+          password: {{HOMEPAGE_VAR_ADGUARD_PASS}}
+
+- Monitoring & Logs:
+    - Uptime Kuma:
+        icon: uptime-kuma.png
+        href: https://uptime.plexlab.site
+        description: Service Uptime Monitoring
+
+    - Dozzle:
+        icon: dozzle.png
+        href: https://logs.plexlab.site
+        description: Docker Logs Viewer
+
+    - Glances:
+        icon: glances.png
+        href: https://stats.plexlab.site
+        description: System Stats & Monitoring
+        widget:
+          type: glances
+          url: http://192.168.10.13:61208
+          metric: info
+
+- Homelab Media:
+    - Jellyfin:
+        icon: jellyfin.png
+        href: https://jellyfin.plexlab.site
+        description: Media Server
+        widget:
+          type: jellyfin
+          url: http://192.168.10.13:8096
+          key: {{HOMEPAGE_VAR_JELLYFIN_KEY}}
+          enableBlocks: true
+          enableNowPlaying: true
+
+    - Jellyseerr:
+        icon: jellyseerr.png
+        href: https://jellyseerr.plexlab.site
+        description: Media Request Management
+        widget:
+          type: jellyseerr
+          url: http://192.168.10.13:5055
+          key: {{HOMEPAGE_VAR_JELLYSEERR_KEY}}
+
+    - Jellystat:
+        icon: jellystat.png
+        href: https://jellystat.plexlab.site
+        description: Jellyfin Statistics
+
+- Media Automation:
+    - Sonarr:
+        icon: sonarr.png
+        href: https://sonarr.plexlab.site
+        description: TV Show Management
+        widget:
+          type: sonarr
+          url: http://192.168.10.13:8989
+          key: {{HOMEPAGE_VAR_SONARR_KEY}}
+
+    - Radarr:
+        icon: radarr.png
+        href: https://radarr.plexlab.site
+        description: Movie Management
+        widget:
+          type: radarr
+          url: http://192.168.10.13:7878
+          key: {{HOMEPAGE_VAR_RADARR_KEY}}
+
+    - Lidarr:
+        icon: lidarr.png
+        href: https://lidarr.plexlab.site
+        description: Music Management
+        widget:
+          type: lidarr
+          url: http://192.168.10.13:8686
+          key: {{HOMEPAGE_VAR_LIDARR_KEY}}
+
+    - Bazarr:
+        icon: bazarr.png
+        href: https://bazarr.plexlab.site
+        description: Subtitle Management
+        widget:
+          type: bazarr
+          url: http://192.168.10.13:6767
+          key: {{HOMEPAGE_VAR_BAZARR_KEY}}
+
+# Teaching Server (lab.nexuswarrior.site)
+- Teaching Infrastructure:
+    - Traefik (Teaching):
+        icon: traefik.png
+        href: https://traefik.lab.nexuswarrior.site
+        description: Teaching Server Reverse Proxy
+
+    - Coder:
+        icon: coder.png
+        href: https://coder.lab.nexuswarrior.site
+        description: Cloud Development Environment
+
+    - Code Server:
+        icon: vscode.png
+        href: https://code.lab.nexuswarrior.site
+        description: VS Code in Browser
+
+    - RustDesk (Teaching):
+        icon: rustdesk.png
+        href: https://rustdesk.lab.nexuswarrior.site
+        description: Teaching Remote Desktop
+
+# External Services
+- Monitoring & Management:
+    - Proxmox:
+        icon: proxmox.png
+        href: {{HOMEPAGE_VAR_PROXMOX_URL}}
+        description: Virtualization Platform
+        widget:
+          type: proxmox
+          url: {{HOMEPAGE_VAR_PROXMOX_URL}}
+          username: {{HOMEPAGE_VAR_PROXMOX_USERNAME}}
+          password: {{HOMEPAGE_VAR_PROXMOX_PASSWORD}}
+
+    - TrueNAS:
+        icon: truenas.png
+        href: {{HOMEPAGE_VAR_TRUENAS_URL}}
+        description: Network Attached Storage
+        widget:
+          type: truenas
+          url: {{HOMEPAGE_VAR_TRUENAS_URL}}
+          key: {{HOMEPAGE_VAR_TRUENAS_KEY}}
+
+    - Portainer:
+        icon: portainer.png
+        href: {{HOMEPAGE_VAR_PORTAINER_URL}}
+        description: Docker Management
+        widget:
+          type: portainer
+          url: {{HOMEPAGE_VAR_PORTAINER_URL}}
+          env: 1
+          key: {{HOMEPAGE_VAR_PORTAINER_KEY}}

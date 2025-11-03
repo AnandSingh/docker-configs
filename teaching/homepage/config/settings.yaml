@@ -1,0 +1,42 @@
+---
+# Homepage Settings Configuration
+
+title: Teaching Lab Dashboard
+favicon: https://cdn-icons-png.flaticon.com/512/2874/2874802.png
+
+# Customize your theme
+theme: dark
+color: slate
+
+# Layout configuration
+layout:
+  Teaching Infrastructure:
+    style: row
+    columns: 4
+  Student Code Servers:
+    style: row
+    columns: 4
+  Monitoring & Management:
+    style: row
+    columns: 3
+
+# Enable search
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: false
+  showSearchSuggestions: true
+
+# Header configuration
+headerStyle: boxed
+
+# Hide version
+hideVersion: true
+
+# Show stats
+showStats: false
+
+# Language
+language: en
+
+# Target for links
+target: _blank

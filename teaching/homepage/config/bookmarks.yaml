@@ -1,0 +1,16 @@
+---
+# Bookmarks Configuration
+
+- Development Resources:
+    - Python Documentation:
+        - abbr: PY
+          href: https://docs.python.org/3/
+
+    - FLL Resources:
+        - abbr: FLL
+          href: https://www.firstlegoleague.org/
+
+- Quick Links:
+    - GitHub:
+        - abbr: GH
+          href: https://github.com/

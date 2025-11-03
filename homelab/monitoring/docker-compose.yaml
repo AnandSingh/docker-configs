@@ -1,0 +1,94 @@
+---
+# Monitoring Stack for Homelab
+# Services: Uptime Kuma, Dozzle, Glances
+
+services:
+  # Uptime Kuma - Uptime Monitoring & Status Pages
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    volumes:
+      - ./uptime-kuma:/app/data
+    ports:
+      - 3002:3001
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uptime.entrypoints=web"
+      - "traefik.http.routers.uptime.rule=Host(`uptime.plexlab.site`)"
+      - "traefik.http.middlewares.uptime-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.uptime.middlewares=uptime-https-redirect"
+      - "traefik.http.routers.uptime-secure.entrypoints=websecure"
+      - "traefik.http.routers.uptime-secure.rule=Host(`uptime.plexlab.site`)"
+      - "traefik.http.routers.uptime-secure.tls=true"
+      - "traefik.http.routers.uptime-secure.service=uptime"
+      - "traefik.http.services.uptime.loadbalancer.server.port=3001"
+      - "traefik.docker.network=proxy"
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+
+  # Dozzle - Real-time Docker Log Viewer
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - 8888:8080
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dozzle.entrypoints=web"
+      - "traefik.http.routers.dozzle.rule=Host(`logs.plexlab.site`)"
+      - "traefik.http.middlewares.dozzle-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.dozzle.middlewares=dozzle-https-redirect"
+      - "traefik.http.routers.dozzle-secure.entrypoints=websecure"
+      - "traefik.http.routers.dozzle-secure.rule=Host(`logs.plexlab.site`)"
+      - "traefik.http.routers.dozzle-secure.tls=true"
+      - "traefik.http.routers.dozzle-secure.service=dozzle"
+      - "traefik.http.services.dozzle.loadbalancer.server.port=8080"
+      - "traefik.docker.network=proxy"
+    environment:
+      - DOZZLE_LEVEL=info
+      - DOZZLE_TAILSIZE=300
+      - DOZZLE_FILTER=status=running
+      - DOZZLE_NO_ANALYTICS=true
+
+  # Glances - System Monitoring
+  glances:
+    image: nicolargo/glances:latest
+    container_name: glances
+    restart: unless-stopped
+    pid: host
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /run/user/${PUID:-1000}/podman/podman.sock:/run/user/${PUID:-1000}/podman/podman.sock:ro
+    ports:
+      - 61208:61208
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.glances.entrypoints=web"
+      - "traefik.http.routers.glances.rule=Host(`stats.plexlab.site`)"
+      - "traefik.http.middlewares.glances-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.glances.middlewares=glances-https-redirect"
+      - "traefik.http.routers.glances-secure.entrypoints=websecure"
+      - "traefik.http.routers.glances-secure.rule=Host(`stats.plexlab.site`)"
+      - "traefik.http.routers.glances-secure.tls=true"
+      - "traefik.http.routers.glances-secure.service=glances"
+      - "traefik.http.services.glances.loadbalancer.server.port=61208"
+      - "traefik.docker.network=proxy"
+    environment:
+      - GLANCES_OPT=-w
+      - TZ=America/Los_Angeles
+
+networks:
+  proxy:
+    external: true

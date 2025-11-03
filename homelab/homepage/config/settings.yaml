@@ -1,0 +1,57 @@
+---
+# Homepage Settings Configuration
+
+title: Lab Dashboard
+favicon: https://cdn-icons-png.flaticon.com/512/2874/2874802.png
+
+# Customize your theme
+theme: dark
+color: slate
+
+# Layout configuration
+layout:
+  Homelab Infrastructure:
+    style: row
+    columns: 2
+  Monitoring & Logs:
+    style: row
+    columns: 3
+  Homelab Media:
+    style: row
+    columns: 3
+  Media Automation:
+    style: row
+    columns: 4
+  Teaching Infrastructure:
+    style: row
+    columns: 4
+  Monitoring & Management:
+    style: row
+    columns: 3
+
+# Enable search
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: false
+  showSearchSuggestions: true
+
+# Header configuration
+headerStyle: boxed
+
+# Hide version
+hideVersion: true
+
+# Show stats
+showStats: false
+
+# Provider configuration - for Docker integration
+providers:
+  # Uncomment to enable auto-discovery from local Docker
+  # docker:
+  #   host: unix:///var/run/docker.sock
+
+# Language
+language: en
+
+# Target for links
+target: _blank

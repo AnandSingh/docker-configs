@@ -1,0 +1,30 @@
+---
+# Bookmarks for quick access to useful resources
+
+- Developer Resources:
+    - GitHub:
+        - icon: github.png
+          href: https://github.com
+          description: Source Control
+
+    - Docker Hub:
+        - icon: docker.png
+          href: https://hub.docker.com
+          description: Container Registry
+
+- Documentation:
+    - Homepage Docs:
+        - icon: homepage.png
+          href: https://gethomepage.dev
+          description: Homepage Documentation
+
+    - Traefik Docs:
+        - icon: traefik.png
+          href: https://doc.traefik.io/traefik
+          description: Traefik Documentation
+
+- Domains:
+    - Cloudflare:
+        - icon: cloudflare.png
+          href: https://dash.cloudflare.com
+          description: DNS & CDN Management

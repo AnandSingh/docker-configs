@@ -1,0 +1,43 @@
+---
+# Homepage Widgets Configuration
+# These widgets appear at the top of your homepage
+
+- search:
+    provider: google
+    target: _blank
+
+- greeting:
+    text_size: xl
+    text: "Welcome to Your Lab Dashboard"
+
+- datetime:
+    text_size: xl
+    format:
+      dateStyle: short
+      timeStyle: short
+      hourCycle: h23
+
+# System resources (Docker socket enabled in docker-compose.yaml)
+- resources:
+    cpu: true
+    memory: true
+    disk: /
+    cputemp: true
+    uptime: true
+    label: Homelab Server
+
+# Glances widget for detailed system stats (requires Glances service running)
+- glances:
+    url: http://192.168.10.13:61208
+    metric: info
+    chart: true
+
+- glances:
+    url: http://192.168.10.13:61208
+    metric: cpu
+    chart: true
+
+- glances:
+    url: http://192.168.10.13:61208
+    metric: memory
+    chart: true

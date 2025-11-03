@@ -1,0 +1,6 @@
+---
+# Docker integration configuration
+# Currently disabled - can be enabled if needed
+
+# my-docker:
+#   host: unix:///var/run/docker.sock
