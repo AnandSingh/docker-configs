@@ -100,12 +100,14 @@ jobs:
             --exclude='homelab/traefik/cf-token' \
             --exclude='homelab/traefik/config/acme.json' \
             --exclude='homelab/traefik/logs/' \
-            --exclude='homelab/homepage/config/' \
+            --exclude='homelab/homepage/config/*.db' \
+            --exclude='homelab/homepage/config/logs/' \
             --exclude='homelab/jellyfin/config/' \
             --exclude='homelab/jellyfin/jellyseerr/' \
             --exclude='homelab/jellyfin/jellystat/' \
             --exclude='homelab/servarr/*/config/' \
             --exclude='homelab/rustdesk/data/' \
+            --exclude='homelab/monitoring/uptime-kuma/' \
             --exclude='teaching/' \
             $GITHUB_WORKSPACE/ "${{ env.DEPLOY_DIR }}/" || { echo "⚠️ Some files couldn't be synced"; exit 0; }
 
