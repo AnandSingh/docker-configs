@@ -4,6 +4,9 @@ Open follow-ups from the 2026-06-22/23 network + WiFi build. None are blocking �
 core setup (pfSense 2-network + VLANs, Proxmox, docker hosts, DNS/ad-blocking, WiFi)
 is live and verified.
 
+## DNS / access (found 2026-06-23)
+- [ ] **AdGuard not resolving `plexlab.site`** — Traefik on `.13:443` serves it (HTTP 200) and Cloudflare publicly points `plexlab.site → 192.168.10.13`, but AdGuard returns the name with NO IP, so HOME clients can't reach it. Likely a broken/missing AdGuard DNS rewrite or upstream resolution issue. Fix: add AdGuard rewrite `*.plexlab.site → 192.168.10.13`, or debug why unbound/AdGuard drops it.
+
 ## WiFi / network polish
 - [ ] **Bedtime schedules** for `NexusRobotics` + `mindsync` kids SSIDs (auto-off, e.g. 21:00–07:00) — via UniFi WiFi schedule or AdGuard client schedule
 - [ ] **Managed switch** between U7 and pfSense — VLANs currently work over the unmanaged switch (tags pass), but a managed switch gives clean per-port VLANs and removes tagged frames from the flat L2
