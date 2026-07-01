@@ -31,6 +31,7 @@ declare -A SERVICES=(
     ["twingate"]="twingate"
     ["piholev6"]="Piholev6"
     ["ddns"]="cloudflare-ddns-updater"
+    ["eink-dashboard"]="eink-dashboard"
 )
 
 # Logging functions
@@ -181,7 +182,7 @@ deploy_all() {
 
     local failed=0
     # Deploy in dependency order
-    local services_order=("traefik" "adguard" "monitoring" "homepage" "rustdesk" "jellyfin" "servarr" "twingate")
+    local services_order=("traefik" "adguard" "monitoring" "homepage" "rustdesk" "jellyfin" "servarr" "twingate" "eink-dashboard")
 
     for service in "${services_order[@]}"; do
         if deploy_service "$service"; then

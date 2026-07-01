@@ -1,0 +1,23 @@
+# Web API
+fastapi==0.115.*
+uvicorn[standard]==0.32.*
+
+# Rendering
+Pillow==11.*
+
+# Vision AI (default provider) — pulls in pydantic, used for structured outputs
+anthropic==0.40.*
+pydantic==2.*
+
+# Folder watching
+watchdog==6.*
+
+# Calendar integration (phase 6) — parse .ics + expand recurrences
+icalendar==7.*
+recurring-ical-events==3.*
+
+# Moon phase (phase 10) — offline sun/moon positions (no network, no data files)
+ephem==4.*
+
+# Config
+python-dotenv==1.*

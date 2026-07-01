@@ -102,6 +102,7 @@ jobs:
             --exclude='homelab/traefik/logs/' \
             --exclude='homelab/homepage/config/*.db' \
             --exclude='homelab/homepage/config/logs/' \
+            --exclude='homelab/eink-dashboard/data/' \
             --exclude='homelab/jellyfin/config/' \
             --exclude='homelab/jellyfin/jellyseerr/' \
             --exclude='homelab/jellyfin/jellystat/' \

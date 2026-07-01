@@ -1,0 +1,34 @@
+# eink-dashboard — headless magic-mirror dashboard renderer.
+# App source is vendored under ./app (from github.com/AnandSingh/eink-dashboard).
+# This is the single stack compose the docker-configs deploy flow runs.
+services:
+  eink-dashboard:
+    build:
+      context: ./app/server
+    container_name: eink-dashboard
+    env_file: .env
+    environment:
+      # Critical: without TZ (+ tzdata in the image) dates render in UTC.
+      - TZ=America/Los_Angeles
+    volumes:
+      - ./data:/data
+    networks:
+      - proxy
+    restart: unless-stopped
+    healthcheck:
+      # slim image has no curl/wget — use Python.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/healthz').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.eink-dashboard.rule=Host(`dash.plexlab.site`)
+      - traefik.http.routers.eink-dashboard.entrypoints=websecure
+      - traefik.http.routers.eink-dashboard.tls=true
+      - traefik.http.services.eink-dashboard.loadbalancer.server.port=8080
+
+networks:
+  proxy:
+    external: true
