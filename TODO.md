@@ -10,7 +10,12 @@ is live and verified.
 ## eink-dashboard (magic mirror)
 - [x] **Phase 1 shipped** 2026-06-30 — server deployed at https://dash.plexlab.site (internal + Twingate), homelab/eink-dashboard stack, mock vision + Snoqualmie weather + quarter widget. Demo data.
 - [ ] **Phase 2 — task capture without glasses** (own brainstorm): phone→Syncthing→inbox, or Telegram/WhatsApp bot via existing /bot, or web/PWA form.
-- [ ] **Phase 3 — Pi + Boox 32"** physical display.
+- [ ] **Phase 3 — physical display on Boox Mira Pro** (25.3", native 3200x1800, 16-level grayscale e-ink):
+  - Device: **Raspberry Pi 4 (4GB)** + micro-HDMI→HDMI cable + SD card + USB-C power. (USB-C single-cable does NOT power the Mira Pro — it needs its own adapter; Pi has no DP/USB-C video anyway.)
+  - Wiring: Mira on its own power adapter; Pi micro-HDMI → Mira HDMI in.
+  - Crispness: render at native 3200x1800 (done) + force Pi HDMI to exact 3200x1800 (custom mode in config.txt / hdmi_cvt) so the Mira never scales (1:1 = pixel-perfect).
+  - Client: repo pi-client (pi-client/display.py + systemd unit) → point DASHBOARD_SERVER at http://dash.plexlab.site → feh fullscreen. Change-gated polling minimizes e-ink refresh/ghosting.
+  - [x] panel res set to 3200x1800 (2026-06-30).
 - [ ] Convert vendored app/ to a true git subtree (needs `sudo dnf install git-subtree`).
 
 ## WiFi / network polish
