@@ -5,7 +5,13 @@ core setup (pfSense 2-network + VLANs, Proxmox, docker hosts, DNS/ad-blocking, W
 is live and verified.
 
 ## DNS / access (found 2026-06-23)
-- [ ] **AdGuard not resolving `plexlab.site`** — Traefik on `.13:443` serves it (HTTP 200) and Cloudflare publicly points `plexlab.site → 192.168.10.13`, but AdGuard returns the name with NO IP, so HOME clients can't reach it. Likely a broken/missing AdGuard DNS rewrite or upstream resolution issue. Fix: add AdGuard rewrite `*.plexlab.site → 192.168.10.13`, or debug why unbound/AdGuard drops it.
+- [x] **AdGuard resolving `plexlab.site`** — FIXED 2026-06-30 (added AdGuard apex `plexlab.site → 192.168.10.13` + wildcard `*.plexlab.site → 192.168.10.13` A rewrites; all subdomains resolve on LAN) — Traefik on `.13:443` serves it (HTTP 200) and Cloudflare publicly points `plexlab.site → 192.168.10.13`, but AdGuard returns the name with NO IP, so HOME clients can't reach it. Likely a broken/missing AdGuard DNS rewrite or upstream resolution issue. Fix: add AdGuard rewrite `*.plexlab.site → 192.168.10.13`, or debug why unbound/AdGuard drops it.
+
+## eink-dashboard (magic mirror)
+- [x] **Phase 1 shipped** 2026-06-30 — server deployed at https://dash.plexlab.site (internal + Twingate), homelab/eink-dashboard stack, mock vision + Snoqualmie weather + quarter widget. Demo data.
+- [ ] **Phase 2 — task capture without glasses** (own brainstorm): phone→Syncthing→inbox, or Telegram/WhatsApp bot via existing /bot, or web/PWA form.
+- [ ] **Phase 3 — Pi + Boox 32"** physical display.
+- [ ] Convert vendored app/ to a true git subtree (needs `sudo dnf install git-subtree`).
 
 ## WiFi / network polish
 - [ ] **Bedtime schedules** for `NexusRobotics` + `mindsync` kids SSIDs (auto-off, e.g. 21:00–07:00) — via UniFi WiFi schedule or AdGuard client schedule
