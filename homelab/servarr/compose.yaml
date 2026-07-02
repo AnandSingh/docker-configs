@@ -30,14 +30,23 @@ services:
         ipv4_address: 172.39.0.2
     ports:
       #- 12345:12345 # VPN forwarded port (configure if using VPN)
-      - 8080:8080 # qbittorrent web interface
+      # host ports remapped off UniFi on this host (UniFi holds 6789 + 8080)
+      - 8082:8080 # qbittorrent web interface (host 8082)
       - 6881:6881 # qbittorrent torrent port
-      - 6789:6789 # nzbget
+      - 6790:6789 # nzbget (host 6790)
       - 9696:9696 # prowlarr
     volumes:
       - ./gluetun:/gluetun
     environment:
       - TZ=America/Los_Angeles
+      # VPN: Private Internet Access over OpenVPN. Creds come from
+      # homelab/servarr/.env (OPENVPN_USER/OPENVPN_PASSWORD) — see .env.example.
+      # UPDATER refreshes the server list (the bundled list goes stale/dead).
+      - VPN_SERVICE_PROVIDER=pia
+      - VPN_TYPE=openvpn
+      - OPENVPN_USER=${OPENVPN_USER}
+      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+      - UPDATER_PERIOD=24h
     healthcheck:
       test: ping -c 1 www.google.com || exit 1
       interval: 20s
