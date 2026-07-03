@@ -8,8 +8,8 @@ services:
       - TZ=America/Los_Angeles
      # - JELLYFIN_PublishedServerUrl=http://10.0.0.101 #optional
     volumes:
-      - ./config:/config
-      - /media:/data
+      - ${APPDATA_ROOT:-.}/jellyfin:/config
+      - ${MEDIA_ROOT:-/media}:/data
     devices:
       - /dev/dri:/dev/dri #Use for Intel QuickSync
     ports:
@@ -33,7 +33,7 @@ services:
       - PGID=1000
       - TZ=America/Los_Angeles
     volumes:
-      - ./jellyseerr:/app/config
+      - ${APPDATA_ROOT:-.}/jellyseerr:/app/config
     ports:
       - 5055:5055
     labels:
@@ -50,9 +50,9 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: mypassword
+      POSTGRES_PASSWORD: ${JELLYSTAT_POSTGRES_PASSWORD:-change-me}
     volumes:
-      - ./jellystat/postgres:/var/lib/postgresql/data
+      - ${DATABASE_ROOT:-./jellystat}/jellystat/postgres:/var/lib/postgresql/data
 
   jellystat:
     image: cyfershepard/jellystat:latest
@@ -60,13 +60,13 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: mypassword
+      POSTGRES_PASSWORD: ${JELLYSTAT_POSTGRES_PASSWORD:-change-me}
       POSTGRES_IP: jellystat-db
       POSTGRES_PORT: 5432
-      JWT_SECRET: "my-secret-jwt-key"
+      JWT_SECRET: ${JELLYSTAT_JWT_SECRET:-change-me}
       TZ: America/Los_Angeles
     volumes:
-      - ./jellystat/backup-data:/app/backend/backup-data
+      - ${APPDATA_ROOT:-.}/jellystat/backup-data:/app/backend/backup-data
     ports:
       - "3001:3000"
     labels:

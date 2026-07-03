@@ -65,6 +65,11 @@
         href: https://jellystat.plexlab.site
         description: Jellyfin Statistics
 
+    - Immich:
+        icon: immich.png
+        href: https://immich.plexlab.site
+        description: Self-hosted photo and video backup
+
 - Media Automation:
     - Sonarr:
         icon: sonarr.png

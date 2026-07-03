@@ -36,7 +36,7 @@ services:
       - 6790:6789 # nzbget (host 6790)
       - 9696:9696 # prowlarr
     volumes:
-      - ./gluetun:/gluetun
+      - ${APPDATA_ROOT:-.}/gluetun:/gluetun
     environment:
       - TZ=America/Los_Angeles
       # VPN: Private Internet Access over OpenVPN. Creds come from
@@ -67,8 +67,9 @@ services:
       - WEBUI_PORT=8080 # must match "qbittorrent web interface" port number in gluetun's service above
       #- TORRENTING_PORT=12345 # VPN forwarded port (configure if using VPN)
     volumes:
-      - ./qbittorrent:/config
-      - /media:/data
+      - ${APPDATA_ROOT:-.}/qbittorrent:/config
+      - ${DOWNLOADS_ROOT:-/media/downloads}:/downloads
+      - ${MEDIA_ROOT:-/media}:/data
     depends_on:
       gluetun:
         condition: service_healthy
@@ -103,8 +104,9 @@ services:
       - TZ=America/Los_Angeles
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./nzbget:/config
-      - /media:/data
+      - ${APPDATA_ROOT:-.}/nzbget:/config
+      - ${DOWNLOADS_ROOT:-/media/downloads}:/downloads
+      - ${MEDIA_ROOT:-/media}:/data
     depends_on:
       gluetun:
         condition: service_healthy
@@ -121,7 +123,7 @@ services:
       - TZ=America/Los_Angeles
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./prowlarr:/config
+      - ${APPDATA_ROOT:-.}/prowlarr:/config
     restart: unless-stopped
     depends_on:
       gluetun:
@@ -139,8 +141,9 @@ services:
       - TZ=America/Los_Angeles
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./sonarr:/config
-      - /media:/data
+      - ${APPDATA_ROOT:-.}/sonarr:/config
+      - ${DOWNLOADS_ROOT:-/media/downloads}:/downloads
+      - ${MEDIA_ROOT:-/media}:/data
     ports:
       - 8989:8989
     labels:
@@ -163,8 +166,9 @@ services:
       - TZ=America/Los_Angeles
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./radarr:/config
-      - /media:/data
+      - ${APPDATA_ROOT:-.}/radarr:/config
+      - ${DOWNLOADS_ROOT:-/media/downloads}:/downloads
+      - ${MEDIA_ROOT:-/media}:/data
     ports:
       - 7878:7878
     labels:
@@ -183,8 +187,9 @@ services:
     restart: unless-stopped
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./lidarr:/config
-      - /media:/data
+      - ${APPDATA_ROOT:-.}/lidarr:/config
+      - ${DOWNLOADS_ROOT:-/media/downloads}:/downloads
+      - ${MEDIA_ROOT:-/media}:/data
     environment:
       - PUID=1000
       - PGID=1000
@@ -201,6 +206,31 @@ services:
       servarrnetwork:
         ipv4_address: 172.39.0.5
 
+  readarr:
+    container_name: readarr
+    image: lscr.io/linuxserver/readarr:develop
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Los_Angeles
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${APPDATA_ROOT:-.}/readarr:/config
+      - ${DOWNLOADS_ROOT:-/media/downloads}:/downloads
+      - ${MEDIA_ROOT:-/media}:/data
+    ports:
+      - 8787:8787
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.readarr.rule=Host(`readarr.plexlab.site`)
+      - traefik.http.routers.readarr.entrypoints=websecure
+      - traefik.http.routers.readarr.tls=true
+      - traefik.http.services.readarr.loadbalancer.server.port=8787
+    networks:
+      servarrnetwork:
+        ipv4_address: 172.39.0.7
+
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
@@ -211,8 +241,8 @@ services:
       - TZ=America/Los_Angeles
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./bazarr:/config
-      - /media:/data
+      - ${APPDATA_ROOT:-.}/bazarr:/config
+      - ${MEDIA_ROOT:-/media}:/data
     ports:
       - 6767:6767
     labels:
