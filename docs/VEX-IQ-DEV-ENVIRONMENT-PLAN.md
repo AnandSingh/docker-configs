@@ -49,7 +49,7 @@ it cannot have run.
 - Verify: root `.gitignore` already covers `teaching/traefik/.env`
 
 **Interfaces:**
-- Produces: `LAB_DOMAIN`, `STUDENT_1_NAME`…`STUDENT_6_NAME`, `COACH_NAME`, `STUDENT_1_PASSWORD`…`STUDENT_6_PASSWORD`, `COACH_PASSWORD`, `FORGEJO_BASE_URL` — consumed by Tasks 3 and 4.
+- Produces: `LAB_DOMAIN`, `STUDENT_1_NAME`…`STUDENT_6_NAME`, `COACH_NAME`, `STUDENT_1_PASSWORD`…`STUDENT_6_PASSWORD`, `COACH_PASSWORD` — consumed by Tasks 3 and 4. No Forgejo variable: remotes are set per-workspace in Task 6, each with its own scoped token.
 
 - [ ] **Step 1: Create `teaching/code-server/.env.example`**
 
