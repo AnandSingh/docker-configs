@@ -25,9 +25,14 @@ is live and verified.
 - [ ] **Guest SSID (`IndraJaal`)** — confirm a device lands on `192.168.40.x` and is isolated
 
 ## Security hygiene
-- [ ] **Rotate AdGuard admin password** off the Proxmox root password (`cartoonnetwork`) — `http://192.168.10.13:3053`
-- [ ] Review WiFi passwords that share a base word with infra creds
-- [ ] Consider a dedicated UniFi local admin password (currently `apiadmin`)
+- [ ] **Rotate Proxmox root password** — was committed in plaintext to this PUBLIC repo 2026-06-23..2026-07-15. Treat as compromised.
+- [ ] **Give AdGuard admin its own password** (`http://192.168.10.13:3053`) — must NOT reuse the Proxmox root password
+- [ ] **Rotate UniFi local admin password** — also committed in plaintext to this public repo over the same window
+- [ ] Review WiFi passphrases for any overlap with rotated infra credentials
+- [ ] Decide whether this repo should stay public at all — it publishes network topology, host IPs, service ports, SSIDs, and student first names. Nothing here appears to benefit from being public.
+
+> Credential values previously listed here were removed 2026-07-15. They remain in git
+> history and in any clone/fork made while public — rotation is the fix, not history rewriting.
 
 ## Docker services (host `192.168.10.13`)
 - [ ] **gluetun VPN creds** — add `OPENVPN_USER`/`OPENVPN_PASSWORD` (or WireGuard) to `homelab/servarr` `.env`; unblocks `qbittorrent`, `nzbget`, `prowlarr` (stuck "created" behind gluetun)
