@@ -1,0 +1,11 @@
+{
+  "gitdoc.enabled": true,
+  "gitdoc.autoCommitDelay": 5000,
+  "gitdoc.autoPush": "onCommit",
+  "gitdoc.filePattern": "**/*.py",
+  "gitdoc.commitMessageFormat": "'auto: 'lll",
+  "editor.fontSize": 15,
+  "editor.minimap.enabled": false,
+  "workbench.startupEditor": "readme",
+  "python.defaultInterpreterPath": "/usr/bin/python3"
+}
