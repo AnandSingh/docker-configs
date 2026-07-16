@@ -517,6 +517,18 @@ rsync -az --delete \
 echo "==> ensuring proxy network"
 ssh "$VM" 'docker network inspect proxy >/dev/null 2>&1 || docker network create proxy'
 
+# The workspace image runs as uid 1000 (codercom/code-server: `USER 1000`).
+# Docker creates missing bind-mount host dirs as root, which would leave every
+# workspace read-only: GitDoc could not `git init` and students could not save.
+# Pre-create each data dir owned by 1000 BEFORE compose up.
+echo "==> preparing workspace data dirs (uid 1000)"
+# shellcheck disable=SC2029
+ssh "$VM" "set -a; . $REMOTE_DIR/code-server/.env; set +a
+for n in \"\$STUDENT_1_NAME\" \"\$STUDENT_2_NAME\" \"\$STUDENT_3_NAME\" \"\$STUDENT_4_NAME\" \"\$STUDENT_5_NAME\" \"\$STUDENT_6_NAME\" \"\$COACH_NAME\"; do
+  sudo mkdir -p '$REMOTE_DIR/code-server/data/'\"\$n\"
+  sudo chown -R 1000:1000 '$REMOTE_DIR/code-server/data/'\"\$n\"
+done"
+
 echo "==> building workspace image"
 ssh "$VM" "cd $REMOTE_DIR/code-server && docker build -t vex-workspace:1.0 ."
 
@@ -548,6 +560,17 @@ chmod +x teaching/deploy-teaching.sh
 cd teaching && ./deploy-teaching.sh
 ```
 Expected: 8 containers (`traefik`, `cs-1`..`cs-6`, `cs-coach`), all `Up`.
+
+- [ ] **Step 3b: Verify a student can actually WRITE to their workspace**
+
+The image runs as uid 1000; a root-owned bind mount silently makes the workspace read-only, and
+the symptom (GitDoc never commits) looks like a GitDoc bug rather than a permissions one.
+
+```bash
+ssh "$TEACHING_VM" 'docker exec cs-1 bash -c "touch /home/coder/robot/.wtest && rm /home/coder/robot/.wtest && echo WRITABLE"'
+```
+Expected: `WRITABLE`. If it errors with permission denied, the data dir is root-owned — re-run the
+deploy script's data-dir step.
 
 - [ ] **Step 4: Verify every workspace is healthy — not just one**
 
