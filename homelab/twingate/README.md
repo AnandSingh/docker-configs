@@ -6,8 +6,7 @@ This directory contains the Twingate connector configuration for secure remote a
 
 ### 1. Create a Twingate Connector
 
-1. Log in to your Twingate Admin Console: https://clcreative.twingate.com/
-   (Replace `clcreative` with your actual network name)
+1. Log in to your Twingate Admin Console: https://hackchefs.twingate.com/
 
 2. Navigate to: **Networks** → **Connectors** → **Add Connector**
 

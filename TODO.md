@@ -34,6 +34,19 @@ is live and verified.
 - [ ] **ytdl-sub** — currently commented out in `homelab/servarr/compose.yaml`; uncomment + add `/data/youtube` + subscription config to enable
 - [ ] Clean up: confirm no leftover/dead containers remain after the gluetun fix
 
+## Homelab stability (Option A — planned 2026-07-15, not started)
+- [ ] **`deploy/deploy-homelab.sh` bug**: `set -e` + `((failed++))` aborts the script on the first failed service instead of continuing. Use `failed=$((failed+1))`. (Verified reproducible.)
+- [ ] **`ddns` never deploys**: in `SERVICES` map but missing from `services_order`, so `deploy-homelab.sh all` skips it
+- [ ] **Dead entry**: `piholev6` → `Piholev6/` directory does not exist
+- [ ] **Fake backup**: `create_backup()` dumps `docker compose config` (rendered YAML) — cannot restore anything. Replace with a running-image-digest + git-SHA manifest for a real rollback path.
+- [ ] **Weak post-deploy check**: `docker compose ps | grep -q "Up"` passes if *any single* container is up. Verify all services.
+- [ ] **Healthchecks missing** on traefik, homepage, jellyfin, monitoring, rustdesk (skip twingate — connector has no health endpoint)
+- [ ] **No self-healing**: `restart: unless-stopped` doesn't catch hung-but-running containers. Extend `deunhealth` (already used in servarr) host-wide. Requires healthchecks first + host-wide docker.sock (blast-radius decision).
+- [ ] **No alerting**: uptime-kuma is deployed but notifies nobody. Add ntfy to monitoring stack; kuma monitor/notification config is UI state, not codifiable in git.
+- [ ] **Remote deploy**: `deploy/deploy-remote.sh` over Twingate. BLOCKED: no SSH key auth on `192.168.10.13` (tried `ts`/`dev`/`root`/`anand` — password only). Run `ssh-copy-id <user>@192.168.10.13` once.
+- [ ] Deferred: GitOps layer (Komodo vs. systemd-timer reconcile) — decide after the above lands
+- [ ] `:latest` on traefik/adguard/jellyfin/homepage/rustdesk/twingate — pin by digest (immich already does this; copy that pattern)
+
 ## Telisky (`192.168.50.x`)
 - [ ] Migrate remaining telisky hosts onto igb3 if still needed: `.50` (llm), `.194` (rc500), `.236` (ai-team)
 - [ ] Telisky web stays **Twingate-only** by design (ts-infra host firewall blocks direct LAN 80/443/2222)
