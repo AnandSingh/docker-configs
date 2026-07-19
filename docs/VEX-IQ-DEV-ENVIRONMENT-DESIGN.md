@@ -3,7 +3,8 @@
 **Date:** 2026-07-15
 **Status:** Approved for planning
 **Team:** Nexus Robotics Academy — VIQRC 2026–27 season, 6 students, VEX IQ 2nd gen
-**Supersedes:** the FLL/Pybricks setup in `archive/teaching/` (teaching VM `192.168.10.29`, now decommissioned)
+**Supersedes:** the FLL/Pybricks setup in `archive/teaching/` (former teaching VM
+`192.168.10.29`, now decommissioned)
 
 ## Goal
 
@@ -29,7 +30,7 @@ host — the server, not the student's laptop. The student's brain is invisible 
 This is why the old Pybricks setup worked and VEX won't: Pybricks shipped a `forceWebBluetooth`
 mode that ran flashing in the browser webview (fed by the
 `Permissions-Policy: bluetooth=(self)` middleware in
-`archive/teaching/traefik/config/dynamic/bluetooth-middleware.yml`). VEX ships no browser
+`archive/robotics-lab/traefik/config/dynamic/bluetooth-middleware.yml`). VEX ships no browser
 entrypoint at all. No amount of configuration changes this.
 
 **Corollary that makes it a non-problem:** the team has *one robot*. Flashing is already
@@ -42,12 +43,12 @@ flash-capable machine.
   6 students, any device, browser only
         |
         v
-  code-server per student  (nihita.lab.nexuswarrior.site, ...)
+  code-server per student  (student-1.nexusroboticslab.org, ...)
    - VEX Python workspace image
    - GitDoc: auto-commit + auto-push on save (server-side)
         |
         v
-  Forgejo: one repo per student  +  team-official repo
+  Local Nexus Robotics Forgejo: one private repo per student + team-official
         |
         v  (git pull)
   Download station  — one machine, beside the robot
@@ -65,28 +66,31 @@ the robot exactly as they already do.
 
 ### 1. code-server stack (rebuild — not in repo)
 
-Only the Traefik routes (`archive/teaching/traefik/config/dynamic/*-code-server.yml`) and
-`archive/teaching/code-server/DESKTOP-VSCODE-GUIDE.md` survived. The compose that ran the five
-instances lived on `.29` and is gone. Rebuild as a single compose with one service per student.
+Only the Traefik routes (`archive/robotics-lab/traefik/config/dynamic/*-code-server.yml`) and
+`archive/robotics-lab/code-server/DESKTOP-VSCODE-GUIDE.md` survived. The compose that ran the old
+instances lived on `.29` and is gone. The replacement is a single compose with six student
+services and one coach service. Names remain private in the untracked `.env`; public examples use
+stable slot names:
 
-Prior port allocation, kept for continuity:
+| Workspace | Host |
+|---|---|
+| Student 1 | student-1.nexusroboticslab.org |
+| Student 2 | student-2.nexusroboticslab.org |
+| Student 3 | student-3.nexusroboticslab.org |
+| Student 4 | student-4.nexusroboticslab.org |
+| Student 5 | student-5.nexusroboticslab.org |
+| Student 6 | student-6.nexusroboticslab.org |
+| Coach | coach.nexusroboticslab.org |
 
-| Student | Host | Port |
-|---|---|---|
-| Farish | farish.lab.nexuswarrior.site | 8445 |
-| Dhruv | dhruv.lab.nexuswarrior.site | 8446 |
-| Gautham | gautham.lab.nexuswarrior.site | 8447 |
-| Nihita | nihita.lab.nexuswarrior.site | 8448 |
-| Anand (coach) | anand.lab.nexuswarrior.site | 8449 |
-
-Team is 6 students; the roster above is 4 + coach. Two more services to add — names needed.
+Traefik reaches each container over the shared Docker `proxy` network; no per-workspace host port
+is published.
 
 Each service: `restart: unless-stopped`, a healthcheck (per the homelab stability work in
 `TODO.md`), password auth, and a per-student volume.
 
 ### 2. VEX Python workspace image
 
-Base on `archive/teaching/coder/templates/fll-python/Dockerfile` (Ubuntu 22.04 + Python 3.11 +
+Base on `archive/robotics-lab/coder/templates/fll-python/Dockerfile` (Ubuntu 22.04 + Python 3.11 +
 dev tooling). Changes:
 
 - **Drop** the FLL-era libraries: `robotframework*`, `pyserial`, jupyter/notebook, the data-science
@@ -111,17 +115,21 @@ Settings to pin (defaults are wrong for this use):
 - `gitdoc.autoPush`: `onCommit` (default) — keep
 - `gitdoc.filePattern`: `**/*.py`
 
-### 4. Forgejo — one repo per student
+### 4. Local Nexus Robotics Forgejo — one private repo per student
 
 Separate repos, not one shared repo. GitDoc pushes on every save; six students auto-pushing to one
 branch would be a non-fast-forward pileup all practice. Isolated repos make that structurally
 impossible.
 
-- `vex-iq/<student>` — one per student, student's own Forgejo account, token scoped to that repo only
+- `vex-iq/student-N` — one per student, private, with one unique write-enabled SSH deploy
+  key mounted only into that student's workspace
 - `vex-iq/team-official` — the code that goes to competition; Programmer + coach, reviewed
 
-Per-student Forgejo accounts are also the "each kid logs in" requirement, landing on the right
-system.
+This is a new local service for Nexus Robotics at `git.nexusroboticslab.org`, not the Telisky
+Forgejo. Students do not need Forgejo credentials for normal editing. GitDoc pushes server-side
+with the workspace's repository-scoped deploy key. Private keys remain on the VM's local secret
+storage, not in the image, tracked repo, or TrueNAS student-data mount. GitHub may later receive
+an optional mirror of reviewed repositories.
 
 ### 5. Download station
 
@@ -134,17 +142,24 @@ One machine beside the robot, plugged into the brain by USB-C. Configured once, 
 A mini PC is a good fit. Note Python on IQ is **single-file download only** per VEX docs — keep
 project structure flat.
 
-## Open decisions
+## Decisions
 
-1. **Host.** `.29` is gone. Rebuild a VM on the robotics Proxmox, or run on the homelab `.13`?
-   `.13` already has Traefik, AdGuard, and the deploy script; a separate VM keeps kid-facing
-   services off the household stack.
-2. **Reachability.** The old setup resolved `*.lab.nexuswarrior.site` to a LAN IP (`192.168.10.29`)
-   — LAN-only. **Do students code from home?** If yes this needs public exposure (real certs,
-   real authn, exposed to the internet) or Twingate accounts for six kids, which is a poor fit.
-   If practice-only, LAN is fine and much safer. This decision gates the security model.
-3. **Two more students.** Roster has 4 + coach; team is 6. Need names.
-4. **Station hardware.** New mini PC, or an existing laptop?
+1. **Host.** Use a dedicated Ubuntu Server 24.04 LTS VM on the homelab Proxmox host. Keeping the kid-facing stack
+   separate avoids coupling it to the household Docker host at `.13`.
+2. **Reachability.** Resolve `*.nexusroboticslab.org` to the replacement VM's HOME-network IP.
+   Access is LAN/Twingate-only with no router port-forwarding. Cloudflare DNS-01 provides trusted
+   TLS certificates without public ingress.
+3. **Student identity.** Real names and passwords live only in the gitignored `.env`; tracked
+   configuration uses `student-1` through `student-6` plus `coach`.
+4. **Storage.** Keep Ubuntu, Docker's data root, images, and Traefik state on the VM's local disk.
+   Mount the dedicated TrueNAS robotics-lab export from `192.168.10.15`, then bind its workspace data
+   directory to `/opt/robotics-lab/code-server/data`; this gives student files ZFS snapshots without
+   placing Docker overlay storage or application state on NFS. Container startup must fail closed
+   when the mount is unavailable.
+
+## Open decision
+
+1. **Station hardware.** New mini PC, or an existing laptop?
 
 ## Risks
 

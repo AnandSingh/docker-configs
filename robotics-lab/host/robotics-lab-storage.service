@@ -1,0 +1,13 @@
+[Unit]
+Description=Require TrueNAS storage for Nexus Robotics Lab
+Wants=network-online.target remote-fs.target
+After=network-online.target remote-fs.target
+Before=robotics-lab-compose.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/require-robotics-lab-storage
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

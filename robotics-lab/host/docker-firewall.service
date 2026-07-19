@@ -1,0 +1,12 @@
+[Unit]
+Description=Nexus Robotics Lab Docker ingress policy
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/configure-nexus-docker-firewall
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

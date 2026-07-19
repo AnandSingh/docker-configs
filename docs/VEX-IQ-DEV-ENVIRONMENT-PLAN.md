@@ -1,19 +1,24 @@
 # VEX IQ Dev Environment — Implementation Plan
 
+> **Review hold:** Implementation is paused pending approval of
+> `VEX-IQ-DEV-ENVIRONMENT-REVIEW-PLAN.md`. That document is the controlling source for
+> architecture decisions, stage gates, testing, backup, and rollback. Do not resume from the task
+> checkboxes below until Gate A is approved and this plan is reconciled to it.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Six students program the VEX IQ robot in Python from a browser with zero setup on their machines, with work auto-committed to Forgejo, and one download station beside the robot for flashing.
+**Goal:** Six students program the VEX IQ robot in Python from a browser with zero setup on their machines, with work auto-committed to a new local Nexus Robotics Forgejo, and one download station beside the robot for flashing.
 
-**Architecture:** A new Proxmox VM runs Traefik plus one code-server container per student. Students edit in the browser; GitDoc auto-commits and pushes server-side to a per-student Forgejo repo. Flashing happens at a single station machine running real VS Code + the VEX extension, because the VEX extension has no browser entrypoint and reaches hardware via `serialport` native bindings on whatever host runs the extension.
+**Architecture:** A new Proxmox VM runs Traefik plus one code-server container per student. In a later phase, a new local Nexus Robotics Forgejo receives GitDoc auto-commits through unique repository-scoped deploy keys. It is independent of Telisky. Flashing happens at a single station machine running real VS Code + the VEX extension, because the VEX extension has no browser entrypoint and reaches hardware via `serialport` native bindings on whatever host runs the extension.
 
-**Tech Stack:** Docker Compose, Traefik v3 (Cloudflare DNS-01), code-server, Open VSX extensions, Forgejo, Debian 12 VM on Proxmox.
+**Tech Stack:** Docker Compose, Traefik v3 (Cloudflare DNS-01), code-server, Open VSX extensions, Forgejo, Ubuntu Server 24.04 LTS VM on Proxmox.
 
 **Design doc:** `docs/VEX-IQ-DEV-ENVIRONMENT-DESIGN.md`
 
 ## Global Constraints
 
-- **Repo `github.com/AnandSingh/docker-configs` is PUBLIC.** No student names, no credentials, no WiFi details in tracked files. Student names live only in `teaching/code-server/.env` (gitignored).
-- **Stack path is `teaching/`** — reuses existing `.gitignore` rules (`teaching/traefik/.env`, `teaching/coder/.env`, `teaching/traefik/config/dynamic/*-code-server.yml`).
+- **Repo `github.com/AnandSingh/docker-configs` is PUBLIC.** No student names, no credentials, no WiFi details in tracked files. Student names live only in `robotics-lab/code-server/.env` (gitignored).
+- **Stack path is `robotics-lab/`** — reuses existing `.gitignore` rules (`robotics-lab/traefik/.env`, `robotics-lab/coder/.env`, `robotics-lab/traefik/config/dynamic/*-code-server.yml`).
 - **LAN-only.** No port-forwarding, no public ingress. TLS via Cloudflare DNS-01, which issues real certs without exposing anything.
 - **Pin every image by tag.** No `:latest` (see `TODO.md` — this bit the homelab).
 - **code-server installs extensions from Open VSX, not the MS Marketplace.** Verified available: `vsls-contrib.gitdoc` 0.2.3, `ms-python.python` 2026.4.0, `charliermarsh.ruff` 2026.60.0.
@@ -27,36 +32,93 @@ No official VEX Python stubs exist. In code-server students get Python syntax + 
 ## Where validation runs
 
 **There is no Docker on the workstation** (`command -v docker` → not found). Nothing in this
-plan can be built or tested locally. Every `docker` command below runs **on the teaching VM over
+plan can be built or tested locally. Every `docker` command below runs **on the robotics-lab VM over
 SSH**. Only `git`-level checks (Task 1) and file authoring happen locally.
 
 Practically: author files locally, commit, run Task 5's deploy script to push them to the VM, and
 run the verification commands there. Do not mark a build/verify step done from the workstation —
 it cannot have run.
 
-## Prerequisite (manual, not an agent task)
+### Task 0: Provision the Nexus Robotics Lab VM on Proxmox
 
-- [ ] **VM created on Proxmox.** Debian 12, 4 vCPU / 8 GB RAM / 60 GB disk (7 code-server containers), static IP on the HOME subnet, docker + docker compose installed, SSH key access from the workstation. **Record the IP — every task below needs it as `TEACHING_VM_IP`.**
-- [ ] **Proxmox root password rotated** (`TODO.md`) — it was public for ~3 weeks.
+The former teaching server at `192.168.10.29` was decommissioned. This environment now runs in
+a dedicated VM on the homelab Proxmox host. Do not reuse `.29` unless it is deliberately reserved
+for the replacement VM and confirmed unused.
+
+**VM specification:**
+
+- Ubuntu Server 24.04 LTS
+- 4 vCPU, 8 GB RAM, 60 GB disk
+- VirtIO network adapter on the HOME network
+- Static DHCP reservation or static address on `192.168.10.0/24`
+- Start on boot enabled, after the network/firewall VM is available
+- Docker Engine plus the Docker Compose plugin
+- SSH key access from the workstation
+- Dedicated Traefik on ports 80/443; no router port-forwarding
+- VM OS, Docker engine, images, and Traefik state on the local 60 GB disk
+- Mount the existing TrueNAS export
+  `192.168.10.15:/mnt/nas-pool/nfs-share/docker` at `/mnt/truenas-docker`, then bind its
+  `robotics-lab/code-server-data` directory to `/opt/robotics-lab/code-server/data`
+
+- [ ] **Step 1: Rotate the Proxmox root password** (`TODO.md`) — it was public for ~3 weeks.
+- [x] **Step 2: Create and boot the Ubuntu VM** with the specification above. VM ID `100`, name
+  `nexus-robotics-lab`; Ubuntu Server 24.04 LTS installed from the official cloud image.
+- [x] **Step 3: Assign its HOME IP** as `ROBOTICS_LAB_VM_IP=192.168.10.29` through Proxmox
+  cloud-init. Guest MAC: `BC:24:11:AD:31:DD`.
+- [x] **Step 4: Install Docker Engine and Compose** and add the deployment user to the `docker`
+  group. Installed from Docker's official Ubuntu repository: Engine 29.6.2, Compose 5.3.1.
+- [x] **Step 5: Install the workstation SSH key** and verify non-interactive access:
+
+```bash
+export ROBOTICS_LAB_VM=dev@<ROBOTICS_LAB_VM_IP>
+ssh "$ROBOTICS_LAB_VM" 'docker version && docker compose version'
+```
+
+Expected: both Docker commands succeed without a password or `sudo` prompt.
+- [x] **Step 6: Confirm ports 80 and 443 are free** before deploying Traefik:
+
+```bash
+ssh "$ROBOTICS_LAB_VM" 'sudo ss -lntp | grep -E ":(80|443)[[:space:]]" || true'
+```
+
+Expected: no listeners. Record the chosen IP before continuing; every remote validation below
+depends on `ROBOTICS_LAB_VM`.
+
+- [x] **Step 7: Mount persistent workspace data from TrueNAS.** Keep Docker's own data root local;
+  only student files belong on NFS. Install `nfs-common`, hard-mount the existing TrueNAS Docker
+  export at `/mnt/truenas-docker`, create `robotics-lab/code-server-data` beneath it, and bind that
+  directory to `/opt/robotics-lab/code-server/data`. Configure systemd so Docker cannot start the
+  robotics-lab containers against an unmounted local fallback directory.
+- [x] **Step 8: Verify NFS identity and write access** before deployment:
+
+```bash
+ssh "$ROBOTICS_LAB_VM" 'findmnt -T /opt/robotics-lab/code-server/data -t nfs,nfs4 &&
+  touch /opt/robotics-lab/code-server/data/.wtest &&
+  chown 1000:1000 /opt/robotics-lab/code-server/data/.wtest &&
+  rm /opt/robotics-lab/code-server/data/.wtest && echo NFS_WRITABLE'
+```
+
+Expected: the mount source is TrueNAS and the command prints `NFS_WRITABLE`. TrueNAS snapshots
+then protect student work independently of the VM disk.
 
 ---
 
-### Task 1: Scaffold `teaching/` and prove names stay private
+### Task 1: Scaffold `robotics-lab/` and prove names stay private
 
 **Files:**
-- Create: `teaching/code-server/.env.example`
-- Create: `teaching/.gitignore`
-- Verify: root `.gitignore` already covers `teaching/traefik/.env`
+- Create: `robotics-lab/code-server/.env.example`
+- Create: `robotics-lab/.gitignore`
+- Verify: root `.gitignore` already covers `robotics-lab/traefik/.env`
 
 **Interfaces:**
-- Produces: `LAB_DOMAIN`, `STUDENT_1_NAME`…`STUDENT_6_NAME`, `COACH_NAME`, `STUDENT_1_PASSWORD`…`STUDENT_6_PASSWORD`, `COACH_PASSWORD` — consumed by Tasks 3 and 4. No Forgejo variable: remotes are set per-workspace in Task 6, each with its own scoped token.
+- Produces: `LAB_DOMAIN`, `STUDENT_1_NAME`…`STUDENT_6_NAME`, `COACH_NAME`, `STUDENT_1_PASSWORD`…`STUDENT_6_PASSWORD`, `COACH_PASSWORD` — consumed by Tasks 3 and 4. Forgejo remotes and deploy keys are configured per workspace in the later autosync phase and do not belong in this shared environment file.
 
-- [ ] **Step 1: Create `teaching/code-server/.env.example`**
+- [ ] **Step 1: Create `robotics-lab/code-server/.env.example`**
 
 ```bash
 # Student workspace identities. Real names go in .env (gitignored) — never here.
 # This repo is PUBLIC.
-LAB_DOMAIN=lab.nexuswarrior.site
+LAB_DOMAIN=nexusroboticslab.org
 
 STUDENT_1_NAME=student-1
 STUDENT_2_NAME=student-2
@@ -76,10 +138,10 @@ STUDENT_6_PASSWORD=
 COACH_PASSWORD=
 ```
 
-Forgejo remotes are set per-workspace in Task 6 (each carries its own scoped token), so no
-Forgejo variable belongs here.
+Forgejo remotes are set per workspace using unique SSH deploy keys, so no Forgejo
+credential belongs here.
 
-- [ ] **Step 2: Create `teaching/.gitignore`**
+- [ ] **Step 2: Create `robotics-lab/.gitignore`**
 
 ```gitignore
 # Real student names, passwords, and workspace data never enter this public repo
@@ -94,9 +156,9 @@ traefik/config/acme.json
 Run:
 ```bash
 cd /home/ts/wrk/docker-configs
-mkdir -p teaching/code-server
-printf 'STUDENT_1_NAME=realkid\n' > teaching/code-server/.env
-git check-ignore -v teaching/code-server/.env
+mkdir -p robotics-lab/code-server
+printf 'STUDENT_1_NAME=realkid\n' > robotics-lab/code-server/.env
+git check-ignore -v robotics-lab/code-server/.env
 ```
 Expected: a line naming the ignoring rule (non-empty output, exit 0). If it prints nothing, the rule is wrong — fix before continuing.
 
@@ -104,16 +166,16 @@ Expected: a line naming the ignoring rule (non-empty output, exit 0). If it prin
 
 Run:
 ```bash
-git status --short teaching/code-server/.env   # expect: NO output
-rm teaching/code-server/.env
+git status --short robotics-lab/code-server/.env   # expect: NO output
+rm robotics-lab/code-server/.env
 ```
 Expected: no output from `git status` — the file is invisible to git.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add teaching/.gitignore teaching/code-server/.env.example
-git commit -m "teaching: scaffold code-server env template, keep names private"
+git add robotics-lab/.gitignore robotics-lab/code-server/.env.example
+git commit -m "robotics-lab: scaffold code-server env template, keep names private"
 ```
 
 ---
@@ -121,14 +183,14 @@ git commit -m "teaching: scaffold code-server env template, keep names private"
 ### Task 2: VEX Python workspace image
 
 **Files:**
-- Create: `teaching/code-server/Dockerfile`
-- Create: `teaching/code-server/settings.json`
+- Create: `robotics-lab/code-server/Dockerfile`
+- Create: `robotics-lab/code-server/settings.json`
 
 **Interfaces:**
 - Consumes: nothing.
 - Produces: image `vex-workspace:1.0`, consumed by Task 3. Workspace dir inside container: `/home/coder/robot`.
 
-- [ ] **Step 1: Create `teaching/code-server/Dockerfile`**
+- [ ] **Step 1: Create `robotics-lab/code-server/Dockerfile`**
 
 ```dockerfile
 FROM codercom/code-server:4.128.0
@@ -153,7 +215,7 @@ RUN mkdir -p /home/coder/robot
 WORKDIR /home/coder/robot
 ```
 
-- [ ] **Step 2: Create `teaching/code-server/settings.json`**
+- [ ] **Step 2: Create `robotics-lab/code-server/settings.json`**
 
 GitDoc defaults are wrong for this use: 30s delay is too slow for a practice session.
 
@@ -174,17 +236,17 @@ GitDoc defaults are wrong for this use: 30s delay is too slow for a practice ses
 - [ ] **Step 3: Copy to the VM and build there** (no Docker locally)
 
 ```bash
-export TEACHING_VM=dev@<TEACHING_VM_IP>
-ssh "$TEACHING_VM" 'mkdir -p /opt/teaching/code-server'
-scp teaching/code-server/Dockerfile teaching/code-server/settings.json "$TEACHING_VM:/opt/teaching/code-server/"
-ssh "$TEACHING_VM" 'cd /opt/teaching/code-server && docker build -t vex-workspace:1.0 .'
+export ROBOTICS_LAB_VM=dev@<ROBOTICS_LAB_VM_IP>
+ssh "$ROBOTICS_LAB_VM" 'mkdir -p /opt/robotics-lab/code-server'
+scp robotics-lab/code-server/Dockerfile robotics-lab/code-server/settings.json "$ROBOTICS_LAB_VM:/opt/robotics-lab/code-server/"
+ssh "$ROBOTICS_LAB_VM" 'cd /opt/robotics-lab/code-server && docker build -t vex-workspace:1.0 .'
 ```
 Expected: `naming to docker.io/library/vex-workspace:1.0 done`. A failure on `--install-extension` means an Open VSX pin is stale — check `curl -s https://open-vsx.org/api/vsls-contrib/gitdoc | grep version` and update the Dockerfile.
 
 - [ ] **Step 4: Verify all three extensions actually installed**
 
 ```bash
-ssh "$TEACHING_VM" 'docker run --rm vex-workspace:1.0 code-server --list-extensions'
+ssh "$ROBOTICS_LAB_VM" 'docker run --rm vex-workspace:1.0 code-server --list-extensions'
 ```
 Expected exactly:
 ```
@@ -197,16 +259,16 @@ If GitDoc is missing, the whole autosync premise fails — stop and fix.
 - [ ] **Step 5: Verify GitDoc settings landed and curl exists**
 
 ```bash
-ssh "$TEACHING_VM" 'docker run --rm vex-workspace:1.0 cat /home/coder/.local/share/code-server/User/settings.json'
-ssh "$TEACHING_VM" 'docker run --rm --entrypoint sh vex-workspace:1.0 -c "command -v curl"'
+ssh "$ROBOTICS_LAB_VM" 'docker run --rm vex-workspace:1.0 cat /home/coder/.local/share/code-server/User/settings.json'
+ssh "$ROBOTICS_LAB_VM" 'docker run --rm --entrypoint sh vex-workspace:1.0 -c "command -v curl"'
 ```
 Expected: JSON containing `"gitdoc.enabled": true` and `"gitdoc.autoCommitDelay": 5000`; then `/usr/bin/curl`. Without curl the Task 3 healthcheck silently fails forever.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add teaching/code-server/Dockerfile teaching/code-server/settings.json
-git commit -m "teaching: VEX python workspace image with gitdoc autosync"
+git add robotics-lab/code-server/Dockerfile robotics-lab/code-server/settings.json
+git commit -m "robotics-lab: VEX python workspace image with gitdoc autosync"
 ```
 
 ---
@@ -214,13 +276,13 @@ git commit -m "teaching: VEX python workspace image with gitdoc autosync"
 ### Task 3: code-server compose — 6 students + coach
 
 **Files:**
-- Create: `teaching/code-server/compose.yaml`
+- Create: `robotics-lab/code-server/compose.yaml`
 
 **Interfaces:**
 - Consumes: `vex-workspace:1.0` (Task 2), `.env` vars (Task 1).
 - Produces: containers `cs-1`..`cs-6`, `cs-coach` on the `proxy` network, each serving port 8080 internally. No host ports published — Traefik reaches them over the docker network.
 
-- [ ] **Step 1: Create `teaching/code-server/compose.yaml`**
+- [ ] **Step 1: Create `robotics-lab/code-server/compose.yaml`**
 
 Names come from `.env` so the public repo never sees them. Seven near-identical services — repeated in full deliberately; compose has no loop.
 
@@ -348,7 +410,7 @@ networks:
 
 Run:
 ```bash
-cd /home/ts/wrk/docker-configs/teaching/code-server
+cd /home/ts/wrk/docker-configs/robotics-lab/code-server
 docker compose config >/dev/null
 ```
 Expected: FAIL — `required variable STUDENT_1_PASSWORD is missing a value: set in .env`. This proves no workspace can start password-less.
@@ -372,26 +434,26 @@ Run: `git status --short` — expected: `.env` does NOT appear. Only `compose.ya
 - [ ] **Step 5: Commit**
 
 ```bash
-git add teaching/code-server/compose.yaml
-git commit -m "teaching: 6 student + coach code-server workspaces"
+git add robotics-lab/code-server/compose.yaml
+git commit -m "robotics-lab: 6 student + coach code-server workspaces"
 ```
 
 ---
 
-### Task 4: Traefik for the teaching VM
+### Task 4: Traefik for the robotics-lab VM
 
 **Files:**
-- Create: `teaching/traefik/compose.yaml`
-- Create: `teaching/traefik/config/traefik.yml`
-- Create: `teaching/traefik/.env.example`
+- Create: `robotics-lab/traefik/compose.yaml`
+- Create: `robotics-lab/traefik/config/traefik.yml`
+- Create: `robotics-lab/traefik/.env.example`
 
 **Interfaces:**
-- Consumes: `CLOUDFLARE_EMAIL`, `CLOUDFLARE_API_TOKEN` from `teaching/traefik/.env`.
+- Consumes: `CLOUDFLARE_API_TOKEN` from `robotics-lab/traefik/.env`.
 - Produces: the external `proxy` network and the `letsencrypt` cert resolver used by Task 3.
 
 DNS-01 issues real certs for a LAN-only host with nothing exposed — same pattern as `homelab/traefik`, and as the archived `.29` config.
 
-- [ ] **Step 1: Create `teaching/traefik/config/traefik.yml`**
+- [x] **Step 1: Create `robotics-lab/traefik/config/traefik.yml`**
 
 ```yaml
 entryPoints:
@@ -408,9 +470,9 @@ entryPoints:
       tls:
         certResolver: letsencrypt
         domains:
-          - main: "lab.nexuswarrior.site"
+          - main: "nexusroboticslab.org"
             sans:
-              - "*.lab.nexuswarrior.site"
+              - "*.nexusroboticslab.org"
 
 providers:
   docker:
@@ -431,30 +493,28 @@ log:
   level: INFO
 ```
 
-- [ ] **Step 2: Create `teaching/traefik/.env.example`**
+- [x] **Step 2: Create `robotics-lab/traefik/.env.example`**
 
 ```bash
-CLOUDFLARE_EMAIL=
 CLOUDFLARE_API_TOKEN=
 ```
 
-- [ ] **Step 3: Create `teaching/traefik/compose.yaml`**
+- [x] **Step 3: Create `robotics-lab/traefik/compose.yaml`**
 
 ```yaml
-name: traefik
+name: robotics-lab-traefik
 
 services:
   traefik:
-    image: traefik:v3.3
-    container_name: traefik
+    image: traefik:v3.7.1@sha256:6b9cbca6fac42ab0075f5437d8dc1685cfd188626d8d515839ea94f8b6271c42
+    container_name: robotics-lab-traefik
     restart: unless-stopped
     networks: [proxy]
     ports:
-      - "80:80"
-      - "443:443"
+      - "192.168.10.29:80:80"
+      - "192.168.10.29:443:443"
     env_file: [.env]
     environment:
-      CF_API_EMAIL: ${CLOUDFLARE_EMAIL:?set in .env}
       CF_DNS_API_TOKEN: ${CLOUDFLARE_API_TOKEN:?set in .env}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -471,21 +531,28 @@ networks:
     external: true
 ```
 
-- [ ] **Step 4: Validate config renders**
+- [x] **Step 4: Validate config renders and the non-secret canary passes**
 
 Run:
 ```bash
-cd /home/ts/wrk/docker-configs/teaching/traefik
-cp .env.example .env && printf 'CLOUDFLARE_EMAIL=x@y.z\nCLOUDFLARE_API_TOKEN=dummy\n' > .env
-docker compose config >/dev/null && echo RENDER_OK
+cd /opt/robotics-lab/traefik
+printf 'CLOUDFLARE_API_TOKEN=dummy-validation-only\n' > .env
+docker compose config --quiet
+docker compose up -d
+docker inspect robotics-lab-traefik --format '{{.State.Health.Status}}'
+curl -sSI --resolve health.nexusroboticslab.org:80:192.168.10.29 \
+  http://health.nexusroboticslab.org/ | head -1
+docker compose down
+rm .env config/acme.json
 ```
-Expected: `RENDER_OK`
+Verified: container became `healthy`; HTTP returned `308 Permanent Redirect`. The dummy token and
+ACME state were removed. Production TLS remains blocked on the real Cloudflare token.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add teaching/traefik/compose.yaml teaching/traefik/config/traefik.yml teaching/traefik/.env.example
-git commit -m "teaching: traefik with cloudflare dns-01, LAN-only"
+git add robotics-lab/traefik/compose.yaml robotics-lab/traefik/config/traefik.yml robotics-lab/traefik/.env.example
+git commit -m "robotics-lab: traefik with cloudflare dns-01, LAN-only"
 ```
 
 ---
@@ -493,21 +560,21 @@ git commit -m "teaching: traefik with cloudflare dns-01, LAN-only"
 ### Task 5: Deploy to the VM and prove one workspace end-to-end
 
 **Files:**
-- Modify: `deploy/deploy-homelab.sh` — no. Create: `teaching/deploy-teaching.sh`
+- Modify: `deploy/deploy-homelab.sh` — no. Create: `robotics-lab/deploy-robotics-lab.sh`
 
 The homelab script targets `.13` and carries known bugs (`TODO.md`). Do not extend it; a small dedicated script avoids inheriting them.
 
 **Interfaces:**
-- Consumes: everything above. Requires `TEACHING_VM_IP` and SSH key access.
+- Consumes: everything above. Requires `ROBOTICS_LAB_VM_IP` and SSH key access.
 
-- [ ] **Step 1: Create `teaching/deploy-teaching.sh`**
+- [ ] **Step 1: Create `robotics-lab/deploy-robotics-lab.sh`**
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
-VM="${TEACHING_VM:?export TEACHING_VM=user@ip}"
-REMOTE_DIR="/opt/teaching"
+VM="${ROBOTICS_LAB_VM:?export ROBOTICS_LAB_VM=user@ip}"
+REMOTE_DIR="/opt/robotics-lab"
 
 echo "==> syncing to $VM:$REMOTE_DIR"
 rsync -az --delete \
@@ -547,17 +614,17 @@ ssh "$VM" 'docker ps --format "{{.Names}}\t{{.Status}}" | sort'
 - [ ] **Step 2: Place secrets on the VM once**
 
 ```bash
-export TEACHING_VM=dev@<TEACHING_VM_IP>
-ssh "$TEACHING_VM" 'mkdir -p /opt/teaching/code-server /opt/teaching/traefik'
-scp teaching/code-server/.env "$TEACHING_VM:/opt/teaching/code-server/.env"
-scp teaching/traefik/.env     "$TEACHING_VM:/opt/teaching/traefik/.env"
+export ROBOTICS_LAB_VM=dev@<ROBOTICS_LAB_VM_IP>
+ssh "$ROBOTICS_LAB_VM" 'mkdir -p /opt/robotics-lab/code-server /opt/robotics-lab/traefik'
+scp robotics-lab/code-server/.env "$ROBOTICS_LAB_VM:/opt/robotics-lab/code-server/.env"
+scp robotics-lab/traefik/.env     "$ROBOTICS_LAB_VM:/opt/robotics-lab/traefik/.env"
 ```
 
 - [ ] **Step 3: Deploy**
 
 ```bash
-chmod +x teaching/deploy-teaching.sh
-cd teaching && ./deploy-teaching.sh
+chmod +x robotics-lab/deploy-robotics-lab.sh
+cd robotics-lab && ./deploy-robotics-lab.sh
 ```
 Expected: 8 containers (`traefik`, `cs-1`..`cs-6`, `cs-coach`), all `Up`.
 
@@ -567,7 +634,7 @@ The image runs as uid 1000; a root-owned bind mount silently makes the workspace
 the symptom (GitDoc never commits) looks like a GitDoc bug rather than a permissions one.
 
 ```bash
-ssh "$TEACHING_VM" 'docker exec cs-1 bash -c "touch /home/coder/robot/.wtest && rm /home/coder/robot/.wtest && echo WRITABLE"'
+ssh "$ROBOTICS_LAB_VM" 'docker exec cs-1 bash -c "touch /home/coder/robot/.wtest && rm /home/coder/robot/.wtest && echo WRITABLE"'
 ```
 Expected: `WRITABLE`. If it errors with permission denied, the data dir is root-owned — re-run the
 deploy script's data-dir step.
@@ -576,65 +643,67 @@ deploy script's data-dir step.
 
 Run:
 ```bash
-ssh "$TEACHING_VM" 'docker ps --filter "name=cs-" --format "{{.Names}} {{.Status}}" | grep -c healthy'
+ssh "$ROBOTICS_LAB_VM" 'docker ps --filter "name=cs-" --format "{{.Names}} {{.Status}}" | grep -c healthy'
 ```
 Expected: `7`. Anything less means a workspace is down — investigate before showing kids.
 
 - [ ] **Step 5: Add DNS rewrites in AdGuard**
 
 In AdGuard (`http://192.168.10.13:3053`) add a wildcard rewrite:
-`*.lab.nexuswarrior.site` → `<TEACHING_VM_IP>`
+`*.nexusroboticslab.org` → `<ROBOTICS_LAB_VM_IP>`
 
-Verify: `dig +short student-1.lab.nexuswarrior.site` → returns `TEACHING_VM_IP`
+Verify: `dig +short student-1.nexusroboticslab.org` → returns `ROBOTICS_LAB_VM_IP`
 
 - [ ] **Step 6: Verify TLS and login page from a LAN client**
 
 ```bash
-curl -sI https://student-1.lab.nexuswarrior.site | head -1
+curl -sI https://student-1.nexusroboticslab.org | head -1
 ```
 Expected: `HTTP/2 200`. A cert error means DNS-01 hasn't completed — check `docker logs traefik`.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add teaching/deploy-teaching.sh
-git commit -m "teaching: deploy script for teaching VM"
+git add robotics-lab/deploy-robotics-lab.sh
+git commit -m "robotics-lab: dedicated VM deployment script"
 ```
 
 ---
 
-### Task 6: Forgejo repos + prove autosync actually works
+### Task 6: Local Forgejo + prove autosync actually works
 
 **Interfaces:**
 - Consumes: running workspaces (Task 5).
 - Produces: verified end-to-end autosync — the core claim of this design.
 
-- [ ] **Step 1: Create the Forgejo org and repos**
+- [ ] **Step 1: Deploy the local Nexus Robotics Forgejo and create private repositories**
 
-In Forgejo: org `vex-iq`, repos `student-1`..`student-6`, `coach`, `team-official`. One Forgejo account per student. Each student's token scoped to **their repo only**, not the org.
+Deploy Forgejo at `git.nexusroboticslab.org`, independent of Telisky. Create organization
+`vex-iq` with private repos `student-1`..`student-6`, `coach`, and `team-official`. Generate one
+unique Ed25519 deploy key per workspace and add its public key only to the matching repository.
 
 - [ ] **Step 2: Wire one workspace's git identity**
 
 ```bash
-ssh "$TEACHING_VM" 'docker exec cs-1 bash -c "
+ssh "$ROBOTICS_LAB_VM" 'docker exec cs-1 bash -c "
   cd /home/coder/robot &&
   git init -b main &&
   git config user.name  \"student-1\" &&
   git config user.email \"student-1@nexusrobotics.local\" &&
-  git remote add origin https://student-1:<TOKEN>@<FORGEJO_HOST>/vex-iq/student-1.git
+  git remote add origin git@git.nexusroboticslab.org:vex-iq/student-1.git
 "'
 ```
 
 - [ ] **Step 3: Prove GitDoc auto-commits and pushes**
 
-This is the step that validates the whole design. In a browser at `https://student-1.lab.nexuswarrior.site`, create `robot.py`, type a line, save, wait 10 seconds.
+This is the step that validates the whole design. In a browser at `https://student-1.nexusroboticslab.org`, create `robot.py`, type a line, save, wait 10 seconds.
 
 ```bash
-ssh "$TEACHING_VM" 'docker exec cs-1 git -C /home/coder/robot log --oneline'
+ssh "$ROBOTICS_LAB_VM" 'docker exec cs-1 git -C /home/coder/robot log --oneline'
 ```
 Expected: at least one `auto: ...` commit. Then confirm it reached Forgejo:
 ```bash
-ssh "$TEACHING_VM" 'docker exec cs-1 git -C /home/coder/robot log origin/main --oneline'
+ssh "$ROBOTICS_LAB_VM" 'docker exec cs-1 git -C /home/coder/robot log origin/main --oneline'
 ```
 Expected: the same commit. If it committed but did not push, `gitdoc.autoPush` is misconfigured — fix before rolling out to the other six.
 
@@ -647,12 +716,12 @@ Same commands, substituting the student index and token each time.
 ### Task 7: Download station
 
 **Files:**
-- Create: `teaching/STATION-SETUP.md`
+- Create: `robotics-lab/STATION-SETUP.md`
 
 **Interfaces:**
-- Consumes: Forgejo repos (Task 6).
+- Consumes: Forgejo repositories (Task 6).
 
-- [ ] **Step 1: Write `teaching/STATION-SETUP.md`**
+- [ ] **Step 1: Write `robotics-lab/STATION-SETUP.md`**
 
 Document, for the one station machine beside the robot:
 
@@ -675,8 +744,8 @@ With the brain connected by USB-C: open a pulled `robot.py`, hit Download, confi
 - [ ] **Step 3: Commit**
 
 ```bash
-git add teaching/STATION-SETUP.md
-git commit -m "teaching: download station setup"
+git add robotics-lab/STATION-SETUP.md
+git commit -m "robotics-lab: download station setup"
 ```
 
 ---

@@ -1,0 +1,36 @@
+name: robotics-lab-cloudflared
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2026.7.2@sha256:4f6655284ab3d252b7f28fedb19fe6c8fc82ee5b1295c20ac74d475e5398a52d
+    container_name: robotics-lab-cloudflared
+    restart: unless-stopped
+    read_only: true
+    user: "65532:65532"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    command:
+      - tunnel
+      - --no-autoupdate
+      - --protocol
+      - quic
+      - run
+      - --token-file
+      - /run/secrets/tunnel-token
+    volumes:
+      - ./tunnel-token:/run/secrets/tunnel-token:ro
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    networks:
+      - proxy
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  proxy:
+    external: true

@@ -5,15 +5,16 @@ homelab/traefik/cf-token_*
 homelab/traefik/config/acme.json
 homelab/rustdesk/data
 
-# Teaching VM secrets and configuration (192.168.10.29)
-teaching/traefik/.env
-teaching/traefik/cf-token
-teaching/traefik/cf-token_*
-teaching/traefik/config/acme.json
-teaching/rustdesk/data/
-teaching/coder/.env
-teaching/scripts/*-code-server.yml
-teaching/traefik/config/dynamic/*-code-server.yml
+# Nexus Robotics Lab secrets and configuration (192.168.10.29)
+robotics-lab/traefik/.env
+robotics-lab/traefik/cf-token
+robotics-lab/traefik/cf-token_*
+robotics-lab/traefik/config/acme.json
+robotics-lab/code-server/.env
+robotics-lab/code-server/data/
+robotics-lab/forgejo/.env
+robotics-lab/forgejo/data/
+robotics-lab/cloudflared/tunnel-token
 
 # Deployment artifacts
 .backups/
