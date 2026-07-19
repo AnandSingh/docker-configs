@@ -1,5 +1,0 @@
-# Real student names, passwords, and workspace data never enter this public repo
-code-server/.env
-code-server/data/
-traefik/.env
-traefik/config/acme.json

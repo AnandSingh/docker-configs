@@ -1,8 +1,0 @@
-[Unit]
-Description=Back up Nexus Robotics Forgejo to TrueNAS
-Requires=docker.service robotics-lab-storage.service
-After=docker.service robotics-lab-storage.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/sbin/backup-robotics-lab-forgejo
