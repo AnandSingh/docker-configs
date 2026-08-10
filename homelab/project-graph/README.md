@@ -44,6 +44,37 @@ at `site/index.html` until the secrets exist and a deploy runs again.
   Docker cannot create a mountpoint inside a read-only parent mount and
   fails before process start (Podman tolerated it, which is why it worked
   locally). `verify-assets.sh` fails CI if that nested mount reappears.
+- The nginx config is mounted as a **directory** (`./nginx:/etc/nginx/conf.d:ro`),
+  never as an individual file bind of `default.conf`. See the NFS pitfall
+  below; `verify-assets.sh` also fails CI if a
+  `/etc/nginx/conf.d/default.conf` file bind reappears.
+
+## NFS pitfall: never bind-mount individual files from the deploy tree
+
+The deployment directory on the deploy host is NFS-backed. Bind-mounting an
+individual file (as the compose file originally did with
+`./nginx/default.conf`) makes the running container pin that exact inode.
+When the deploy rsync later replaces the file, NFS cannot free the old inode
+while the container still holds it open, so it "silly-renames" it to a
+hidden `.nfs…` file in the same directory. The next isolated deploy's
+`rsync --delete` then fails with `Device or resource busy` trying to unlink
+that `.nfs…` file — blocking the very deploy that would fix things.
+
+Rules that follow from this:
+
+- **Mount directories, not files.** The container pins the directory, not any
+  file inode, so rsync can replace `default.conf` freely. The isolated deploy
+  runs `docker compose up -d --force-recreate` so the new config is loaded and
+  any old open inode is released deterministically on every deployment.
+- The isolated project-graph rsync passes `--exclude='.nfs*'` so transient
+  silly-rename files are never copied and never block `--delete`. NFS
+  removes a silly-renamed file automatically once the old container (or any
+  other holder) releases the inode — after container recreation they clean
+  themselves up; no manual deletion is needed or safe while the inode is
+  open.
+- The same scoped rsync uses `--checksum`. Because it intentionally does not
+  preserve mtimes, a size-only quick check would otherwise miss a config
+  edit whose replacement has the same byte length.
 
 ## Publish a new graph
 
@@ -89,15 +120,16 @@ isolated path instead of the shared full-repo machinery:
 - **Sync**: rsync copies *only* `homelab/project-graph/` into the deployment
   directory (`--delete` scoped to that one tree, `site/` excluded so the
   private runtime HTML **and** the deployed `site/assets/` copy survive; the
-  workflow, not rsync, owns publishing into `site/`). No other homelab
-  service or deployment directory is scanned, deleted, or chmod-ed.
+  workflow, not rsync, owns publishing into `site/`; `.nfs*` silly-rename
+  files are excluded so open-inode leftovers never block the sync). No other
+  homelab service or deployment directory is scanned, deleted, or chmod-ed.
 - **Secrets**: the shared "Setup secrets" step is skipped entirely — this
   stack has no `.env`, and a project-only deploy must not rewrite unrelated
   Traefik/Twingate secret files.
 - **Deploy**: `deploy/deploy.sh` is bypassed. The workflow works only inside
   `homelab/project-graph/`: `compose config` validation, a SHA-256 check of
   the deployed `site/assets/vis-network.min.js` (fail-hard if missing or
-  wrong), pull of the digest-pinned image, `up -d`, then a bounded wait
+  wrong), pull of the digest-pinned image, `up -d --force-recreate`, then a bounded wait
   (≤120s) for the `project-graph` container health check. On timeout it
   prints bounded `compose ps`/`logs --tail` output and fails.
 
