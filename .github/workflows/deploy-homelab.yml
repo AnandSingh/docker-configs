@@ -167,7 +167,38 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Sync to deployment directory
+        env:
+          # Allowlist-validated in the validate job; consumed only via env,
+          # never interpolated into the shell as a workflow expression.
+          DEPLOY_SERVICE: ${{ needs.validate.outputs.deploy_service }}
         run: |
+          set -euo pipefail
+
+          if [ "$DEPLOY_SERVICE" = "project-graph" ]; then
+            # ISOLATED PATH — project-graph deploys sync EXACTLY ONE tree.
+            # Do NOT reintroduce the full-repo rsync here: unrelated homelab
+            # runtime trees (adguard, eink-dashboard, servarr, infisical, ...)
+            # contain root/container-owned files the runner cannot traverse,
+            # so a full-tree sync fails hard and blocks project-only deploys
+            # — and must never scan, delete, or chmod those directories.
+            SERVICE_DIR="$DEPLOY_DIR/homelab/project-graph"
+            echo "Isolated sync: only homelab/project-graph -> $SERVICE_DIR"
+
+            mkdir -p "$SERVICE_DIR"
+
+            # --delete is scoped to this one directory; site/ (private
+            # runtime HTML, reconstructed from secrets) is preserved.
+            rsync -rlD --delete \
+              --no-perms --no-owner --no-group \
+              --exclude='site/' \
+              "$GITHUB_WORKSPACE/homelab/project-graph/" "$SERVICE_DIR/" \
+              || { echo "❌ project-graph rsync failed — aborting deploy"; exit 1; }
+
+            echo "✅ project-graph synced (no other directories touched)"
+            exit 0
+          fi
+
+          # LEGACY full-repo sync — every service except project-graph.
           echo "Syncing homelab code to ${{ env.DEPLOY_DIR }}"
 
           mkdir -p "${{ env.DEPLOY_DIR }}"
@@ -198,6 +229,11 @@ jobs:
           echo "✅ Code synced successfully"
 
       - name: Setup secrets
+        # Skipped for isolated project-graph deploys: that stack has no .env,
+        # and this step must not rewrite unrelated Traefik/Twingate secrets.
+        # deploy_service is allowlist-validated in the validate job and is
+        # only compared here as an expression, never interpolated into shell.
+        if: needs.validate.outputs.deploy_service != 'project-graph'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
@@ -349,6 +385,50 @@ jobs:
         env:
           DEPLOY_SERVICE: ${{ needs.validate.outputs.deploy_service }}
         run: |
+          set -euo pipefail
+
+          if [ "$DEPLOY_SERVICE" = "project-graph" ]; then
+            # ISOLATED PATH — bypass deploy/deploy.sh entirely. That script
+            # (like a full-tree rsync) walks unrelated homelab directories
+            # containing root/container-owned runtime state; a project-graph
+            # deploy works only inside its own tree. Do NOT "simplify" this
+            # back to the shared deploy script.
+            cd "$DEPLOY_DIR/homelab/project-graph"
+
+            echo "Validating compose config"
+            docker compose -f compose.yaml config > /dev/null
+
+            echo "Pulling digest-pinned image"
+            docker compose -f compose.yaml pull --quiet
+
+            echo "Starting project-graph"
+            docker compose -f compose.yaml up -d
+
+            # Bounded health wait: compose healthcheck has start_period 10s
+            # and interval 30s, so allow up to 24 x 5s = 120s.
+            echo "Waiting for container 'project-graph' to become healthy"
+            STATUS="unknown"
+            for i in $(seq 1 24); do
+              STATUS="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' project-graph 2>/dev/null || echo 'not-found')"
+              if [ "$STATUS" = "healthy" ]; then
+                break
+              fi
+              echo "  attempt $i/24: $STATUS"
+              sleep 5
+            done
+
+            if [ "$STATUS" != "healthy" ]; then
+              echo "❌ project-graph not healthy after 120s (last status: $STATUS)"
+              docker compose -f compose.yaml ps
+              docker compose -f compose.yaml logs --no-color --tail=100
+              exit 1
+            fi
+
+            echo "✅ project-graph deployed and healthy"
+            exit 0
+          fi
+
+          # LEGACY path — all other services use the shared deploy script.
           cd ${{ env.DEPLOY_DIR }}
           bash deploy/deploy.sh --server homelab "$DEPLOY_SERVICE"
 
