@@ -304,6 +304,27 @@ jobs:
           # Docker create site/ root-owned and later runs can never write it.
           mkdir -p "$SITE_DIR" "$BACKUP_DIR"
 
+          # Publish the public vendored vis-network bundle into site/assets/.
+          # site/ is the ONE web-root mount (Docker rejects a nested ./assets
+          # mount under a read-only parent), so the asset must be copied in.
+          # This runs BEFORE every early exit below — including the
+          # same-HTML-hash skip — so dependency updates and repairs of a
+          # missing/corrupt deployed asset are never skipped.
+          ASSET_SHA256="576bb887733eb01bb52ee75b90ef46d818454de5fddb5b616fb8a298d307ca12"
+          ASSET_SRC="$SERVICE_DIR/assets/vis-network.min.js"
+          ASSET_DEST_DIR="$SITE_DIR/assets"
+          ASSET_STAGE="$ASSET_DEST_DIR/.vis-network.min.js.tmp"
+
+          echo "$ASSET_SHA256  $ASSET_SRC" | sha256sum -c - \
+            || { echo "❌ Synced assets/vis-network.min.js does not match pinned SHA-256"; exit 1; }
+          # Created as the runner user, like site/ above.
+          mkdir -p "$ASSET_DEST_DIR"
+          install -m 0444 "$ASSET_SRC" "$ASSET_STAGE"
+          echo "$ASSET_SHA256  $ASSET_STAGE" | sha256sum -c - \
+            || { echo "❌ Staged vis-network.min.js failed SHA-256 re-check"; rm -f "$ASSET_STAGE"; exit 1; }
+          mv -f "$ASSET_STAGE" "$ASSET_DEST_DIR/vis-network.min.js"
+          echo "✅ site/assets/vis-network.min.js published atomically (mode 0444, ${ASSET_SHA256})"
+
           if [ -z "$PROJECT_GRAPH_DASHBOARD_GZIP_B64" ] && [ -z "$PROJECT_GRAPH_DASHBOARD_SHA256" ]; then
             if [ "$DEPLOY_SERVICE" = "project-graph" ]; then
               echo "❌ project-graph deploy requested but its secrets are not configured"
@@ -375,8 +396,8 @@ jobs:
           fi
 
           # Atomic replacement: stage in the same directory, then rename.
-          # /assets/ is a separate read-only mount of the repo-vendored
-          # bundle, so no private/public copying is needed here.
+          # The public vis-network bundle was already published into
+          # site/assets/ above; index.html references it as /assets/….
           install -m 0444 "$TMP_DIR/index.html" "$SITE_DIR/.index.html.tmp"
           mv -f "$SITE_DIR/.index.html.tmp" "$SITE_DIR/index.html"
           echo "✅ site/index.html replaced atomically (mode 0444)"
@@ -397,6 +418,13 @@ jobs:
 
             echo "Validating compose config"
             docker compose -f compose.yaml config > /dev/null
+
+            # The container serves /assets/vis-network.min.js from the single
+            # site/ mount — refuse to start it if the deployed copy is missing
+            # or does not match the pinned hash.
+            RUNTIME_ASSET="$DEPLOY_DIR/homelab/project-graph/site/assets/vis-network.min.js"
+            echo "576bb887733eb01bb52ee75b90ef46d818454de5fddb5b616fb8a298d307ca12  $RUNTIME_ASSET" | sha256sum -c - \
+              || { echo "❌ Deployed site/assets/vis-network.min.js missing or wrong hash — aborting before up -d"; exit 1; }
 
             echo "Pulling digest-pinned image"
             docker compose -f compose.yaml pull --quiet

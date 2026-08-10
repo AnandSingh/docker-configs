@@ -10,10 +10,13 @@ port, and no Cloudflare Access).
 | Content | Where it lives | In Git? |
 |---|---|---|
 | Generated graph HTML (private) | GitHub Actions secrets → `site/index.html` on the deploy host | **Never** |
-| vis-network 9.1.6 bundle + license (public) | `assets/` | Yes |
+| vis-network 9.1.6 bundle + license (public) | `assets/` (source of truth); workflow deploys a hash-verified copy to `site/assets/vis-network.min.js` | Yes (`assets/` only) |
 | nginx config, compose, scripts | this directory | Yes |
 
-`site/` is gitignored and excluded from the deploy rsync, so the runtime HTML
+On the deploy host, `site/` therefore contains the private `index.html` plus
+`assets/vis-network.min.js`, a deployed copy of the *public* hash-pinned
+bundle — nothing in `site/` is secret except `index.html`. `site/` stays
+gitignored and excluded from the deploy rsync, so the runtime content
 survives code syncs and is only replaced atomically by the workflow.
 
 Secrets used (repo secrets on `AnandSingh/docker-configs`):
@@ -34,8 +37,13 @@ at `site/index.html` until the secrets exist and a deploy runs again.
 - nginx: dotfiles denied, autoindex off, `no-store` + `noindex` + CSP allowing
   only `'self'` and the inline script/style Graphify emits — the page cannot
   load from or talk to any external origin.
-- `/assets/` is a separate read-only mount of the repo-vendored bundle, so the
-  private `site/` dir never contains copies of anything and vice versa.
+- The web root is a **single** read-only mount of `site/`. `/assets/` is
+  served from `site/assets/`, where the workflow atomically installs a
+  SHA-256-verified copy of the repo-vendored bundle (mode 0444). A nested
+  `./assets` bind mount under the read-only web root is deliberately absent:
+  Docker cannot create a mountpoint inside a read-only parent mount and
+  fails before process start (Podman tolerated it, which is why it worked
+  locally). `verify-assets.sh` fails CI if that nested mount reappears.
 
 ## Publish a new graph
 
@@ -65,8 +73,13 @@ The workflow reconstructs `site/index.html` (base64 → gunzip → sha256 compar
 is `project-graph` or `all`, keeps a timestamped rollback copy under
 `.backups/homelab/project-graph-site/` (last 5), then deploys the container.
 If the deployed HTML already matches the published SHA-256, the step logs
-"unchanged" and touches nothing, so rollback history only ever contains
-distinct versions.
+"unchanged" and leaves it alone, so rollback history only ever contains
+distinct versions. The public `site/assets/vis-network.min.js` copy is
+republished (hash-verified, atomic, mode 0444) on **every** reconstruction
+run — including unchanged-HTML runs — so bundle updates or a
+missing/corrupt deployed asset are always repaired; the deploy step then
+re-verifies its hash immediately before `docker compose up -d` and refuses
+to start the container on a mismatch.
 
 ## Isolated deploy path (project-graph only)
 
@@ -75,16 +88,18 @@ isolated path instead of the shared full-repo machinery:
 
 - **Sync**: rsync copies *only* `homelab/project-graph/` into the deployment
   directory (`--delete` scoped to that one tree, `site/` excluded so the
-  private runtime HTML survives). No other homelab service or deployment
-  directory is scanned, deleted, or chmod-ed.
+  private runtime HTML **and** the deployed `site/assets/` copy survive; the
+  workflow, not rsync, owns publishing into `site/`). No other homelab
+  service or deployment directory is scanned, deleted, or chmod-ed.
 - **Secrets**: the shared "Setup secrets" step is skipped entirely — this
   stack has no `.env`, and a project-only deploy must not rewrite unrelated
   Traefik/Twingate secret files.
 - **Deploy**: `deploy/deploy.sh` is bypassed. The workflow works only inside
-  `homelab/project-graph/`: `compose config` validation, pull of the
-  digest-pinned image, `up -d`, then a bounded wait (≤120s) for the
-  `project-graph` container health check. On timeout it prints bounded
-  `compose ps`/`logs --tail` output and fails.
+  `homelab/project-graph/`: `compose config` validation, a SHA-256 check of
+  the deployed `site/assets/vis-network.min.js` (fail-hard if missing or
+  wrong), pull of the digest-pinned image, `up -d`, then a bounded wait
+  (≤120s) for the `project-graph` container health check. On timeout it
+  prints bounded `compose ps`/`logs --tail` output and fails.
 
 Why: the deploy host's other service trees contain runtime state owned by
 root or container users. Any full-tree operation (rsync, chmod, deploy
@@ -117,7 +132,12 @@ curl -fsS -o /dev/null -w '%{http_code}\n' https://projects.plexlab.site/  # exp
 # publish-graph-secrets.sh / stored in PROJECT_GRAPH_DASHBOARD_SHA256):
 sha256sum /home/dev/docker/docker-configs/homelab/project-graph/site/index.html
 
-# Vendored JS integrity (repo checkout or deploy host):
+# Deployed copy of the public bundle matches the pinned hash (deploy host):
+echo "576bb887733eb01bb52ee75b90ef46d818454de5fddb5b616fb8a298d307ca12  \
+/home/dev/docker/docker-configs/homelab/project-graph/site/assets/vis-network.min.js" | sha256sum -c -
+
+# Vendored JS integrity + no nested /assets mount + no tracked site/ files
+# (repo checkout or deploy host):
 homelab/project-graph/scripts/verify-assets.sh
 ```
 

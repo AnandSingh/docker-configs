@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # verify-assets.sh — check the vendored vis-network bundle matches the pinned
-# hash and that no private content has leaked into Git-tracked paths.
+# hash, that compose does not regress to a nested /assets mount, and that no
+# private content has leaked into Git-tracked paths.
 # Used by CI (validate job) and safe to run locally. Read-only.
 
 set -euo pipefail
@@ -9,6 +10,18 @@ SERVICE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXPECTED_JS_SHA256='576bb887733eb01bb52ee75b90ef46d818454de5fddb5b616fb8a298d307ca12'
 
 echo "${EXPECTED_JS_SHA256}  ${SERVICE_DIR}/assets/vis-network.min.js" | sha256sum -c -
+
+# Regression guard: Docker cannot create a mountpoint inside a read-only
+# parent bind mount, so a nested ./assets -> /usr/share/nginx/html/assets
+# mount (which local Podman happily accepted) breaks the container at start
+# on the deploy host. The workflow copies the bundle into site/assets/
+# instead; the web root must stay a SINGLE mount.
+if grep -Eq '/usr/share/nginx/html/assets' "${SERVICE_DIR}/compose.yaml"; then
+    echo "ERROR: compose.yaml mounts /usr/share/nginx/html/assets — nested mount" >&2
+    echo "  under the read-only site mount fails on Docker. Publish the asset" >&2
+    echo "  into site/assets/ via the deploy workflow instead." >&2
+    exit 1
+fi
 
 [ -f "${SERVICE_DIR}/assets/vis-network-LICENSE-APACHE-2.0.txt" ] || {
     echo "ERROR: vis-network license file missing" >&2
