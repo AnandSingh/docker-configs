@@ -32,6 +32,7 @@ declare -A SERVICES=(
     ["piholev6"]="Piholev6"
     ["ddns"]="cloudflare-ddns-updater"
     ["eink-dashboard"]="eink-dashboard"
+    ["project-graph"]="project-graph"
 )
 
 # Logging functions
@@ -182,7 +183,9 @@ deploy_all() {
 
     local failed=0
     # Deploy in dependency order
-    local services_order=("traefik" "adguard" "monitoring" "homepage" "rustdesk" "jellyfin" "servarr" "twingate" "eink-dashboard")
+    # project-graph comes after traefik/twingate so the proxy and remote
+    # access layers are up before the private dashboard is exposed.
+    local services_order=("traefik" "adguard" "monitoring" "homepage" "rustdesk" "jellyfin" "servarr" "twingate" "eink-dashboard" "project-graph")
 
     for service in "${services_order[@]}"; do
         if deploy_service "$service"; then

@@ -15,6 +15,10 @@ teaching/coder/.env
 teaching/scripts/*-code-server.yml
 teaching/traefik/config/dynamic/*-code-server.yml
 
+# Project graph dashboard — private generated HTML lives only on the deploy
+# host (reconstructed from GitHub Actions secrets); never commit it here.
+homelab/project-graph/site/
+
 # Deployment artifacts
 .backups/
 deploy/deploy.log
