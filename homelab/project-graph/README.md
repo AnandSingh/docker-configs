@@ -63,10 +63,36 @@ deploys.
 The workflow reconstructs `site/index.html` (base64 → gunzip → sha256 compare
 → reference checks → atomic replace, mode 0444) only when the selected service
 is `project-graph` or `all`, keeps a timestamped rollback copy under
-`.backups/homelab/project-graph-site/` (last 5), then runs the normal
-compose deploy. If the deployed HTML already matches the published SHA-256,
-the step logs "unchanged" and touches nothing, so rollback history only ever
-contains distinct versions.
+`.backups/homelab/project-graph-site/` (last 5), then deploys the container.
+If the deployed HTML already matches the published SHA-256, the step logs
+"unchanged" and touches nothing, so rollback history only ever contains
+distinct versions.
+
+## Isolated deploy path (project-graph only)
+
+When the selected service is `project-graph`, the workflow takes a strictly
+isolated path instead of the shared full-repo machinery:
+
+- **Sync**: rsync copies *only* `homelab/project-graph/` into the deployment
+  directory (`--delete` scoped to that one tree, `site/` excluded so the
+  private runtime HTML survives). No other homelab service or deployment
+  directory is scanned, deleted, or chmod-ed.
+- **Secrets**: the shared "Setup secrets" step is skipped entirely — this
+  stack has no `.env`, and a project-only deploy must not rewrite unrelated
+  Traefik/Twingate secret files.
+- **Deploy**: `deploy/deploy.sh` is bypassed. The workflow works only inside
+  `homelab/project-graph/`: `compose config` validation, pull of the
+  digest-pinned image, `up -d`, then a bounded wait (≤120s) for the
+  `project-graph` container health check. On timeout it prints bounded
+  `compose ps`/`logs --tail` output and fails.
+
+Why: the deploy host's other service trees contain runtime state owned by
+root or container users. Any full-tree operation (rsync, chmod, deploy
+script walks) either fails hard on those unreadable paths or risks touching
+runtime data — so project-only deploys intentionally never traverse
+unrelated trees. Artifact reconstruction and rollback behavior are the same
+on both paths. Deploys of any *other* service (or `all`) still use the
+legacy full-repo sync + `deploy/deploy.sh` unchanged.
 
 ## Verify health
 
