@@ -58,7 +58,8 @@ Examples:
 
 Servers:
   homelab   - Main homelab server (192.168.10.13)
-              Services: traefik, homepage, jellyfin, servarr, twingate
+              Services: traefik, homepage, jellyfin, servarr, twingate,
+                        eink-dashboard, project-graph
 
   teaching  - Teaching VM (192.168.10.29)
               Services: traefik, coder, rustdesk

@@ -9,6 +9,14 @@ on:
       - 'deploy/deploy-homelab.sh'
       - 'deploy/setup-secrets.sh'
       - '.github/workflows/deploy-homelab.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'homelab/**'
+      - 'deploy/deploy.sh'
+      - 'deploy/deploy-homelab.sh'
+      - 'deploy/setup-secrets.sh'
+      - '.github/workflows/deploy-homelab.yml'
   workflow_dispatch:
     inputs:
       service:
@@ -23,10 +31,73 @@ jobs:
   validate:
     name: Validate Homelab Services
     runs-on: ubuntu-latest
+    outputs:
+      deploy_service: ${{ steps.plan.outputs.deploy_service }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Full history so the plan step can diff event.before..sha.
+          fetch-depth: 0
+
+      - name: Determine deploy service
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SERVICE: ${{ github.event.inputs.service }}
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Default: fail closed to a full deploy whenever we cannot prove
+          # the push only touched project-graph scoped paths.
+          SERVICE="all"
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            # Allowlist the manual input (empty means all). Reject anything
+            # else BEFORE it becomes a job output consumed by the deploy job.
+            SERVICE="${INPUT_SERVICE:-all}"
+            case "$SERVICE" in
+              all|traefik|adguard|monitoring|homepage|jellyfin|servarr|rustdesk|twingate|piholev6|ddns|eink-dashboard|project-graph)
+                ;;
+              *)
+                echo "❌ Unknown service input: '$SERVICE'"
+                echo "   Allowed: all (or empty), traefik, adguard, monitoring, homepage, jellyfin,"
+                echo "            servarr, rustdesk, twingate, piholev6, ddns, eink-dashboard, project-graph"
+                exit 1
+                ;;
+            esac
+          elif [ "$EVENT_NAME" = "push" ]; then
+            NULL_SHA="0000000000000000000000000000000000000000"
+            if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "$NULL_SHA" ] \
+               && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null \
+               && git cat-file -e "${CURRENT_SHA}^{commit}" 2>/dev/null; then
+              if CHANGED=$(git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" 2>/dev/null) \
+                 && [ -n "$CHANGED" ]; then
+                any_project_graph=false
+                all_in_scope=true
+                while IFS= read -r path; do
+                  case "$path" in
+                    homelab/project-graph/*) any_project_graph=true ;;
+                    deploy/deploy-homelab.sh|deploy/deploy.sh|.github/workflows/deploy-homelab.yml|.gitignore) ;;
+                    *) all_in_scope=false ;;
+                  esac
+                done <<< "$CHANGED"
+                if [ "$any_project_graph" = true ] && [ "$all_in_scope" = true ]; then
+                  SERVICE="project-graph"
+                fi
+              else
+                echo "Could not compute changed files; failing closed to 'all'"
+              fi
+            else
+              echo "before SHA unavailable (new branch/force push); failing closed to 'all'"
+            fi
+          fi
+
+          echo "Selected service: $SERVICE"
+          echo "deploy_service=$SERVICE" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -59,6 +130,12 @@ jobs:
       - name: Validate RustDesk compose
         run: docker compose -f homelab/rustdesk/docker-compose.yml config > /dev/null
 
+      - name: Validate Project Graph compose
+        run: docker compose -f homelab/project-graph/compose.yaml config > /dev/null
+
+      - name: Verify Project Graph vendored assets
+        run: bash homelab/project-graph/scripts/verify-assets.sh
+
       - name: Check for hardcoded secrets
         run: |
           # Check for actual hardcoded secrets (not env variable references)
@@ -73,7 +150,12 @@ jobs:
     name: Deploy to Homelab Server
     runs-on: self-hosted
     needs: validate
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # Only ever deploy main. workflow_dispatch can target any branch, and
+    # push filters can change on a branch — validation may run elsewhere,
+    # deployment may not.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
 
     steps:
       - name: Clean workspace
@@ -103,6 +185,7 @@ jobs:
             --exclude='homelab/homepage/config/*.db' \
             --exclude='homelab/homepage/config/logs/' \
             --exclude='homelab/eink-dashboard/data/' \
+            --exclude='homelab/project-graph/site/' \
             --exclude='homelab/jellyfin/config/' \
             --exclude='homelab/jellyfin/jellyseerr/' \
             --exclude='homelab/jellyfin/jellystat/' \
@@ -110,7 +193,7 @@ jobs:
             --exclude='homelab/rustdesk/data/' \
             --exclude='homelab/monitoring/uptime-kuma/' \
             --exclude='teaching/' \
-            $GITHUB_WORKSPACE/ "${{ env.DEPLOY_DIR }}/" || { echo "⚠️ Some files couldn't be synced"; exit 0; }
+            $GITHUB_WORKSPACE/ "${{ env.DEPLOY_DIR }}/" || { echo "❌ rsync failed — deployment directory may be incomplete, aborting deploy"; exit 1; }
 
           echo "✅ Code synced successfully"
 
@@ -165,14 +248,117 @@ jobs:
           chmod 600 homelab/twingate/.env
           echo "✅ Twingate secrets configured"
 
+      - name: Reconstruct project graph HTML
+        if: needs.validate.outputs.deploy_service == 'project-graph' || needs.validate.outputs.deploy_service == 'all'
+        env:
+          # Secrets are exposed to this step only. Never echo their values.
+          PROJECT_GRAPH_DASHBOARD_GZIP_B64: ${{ secrets.PROJECT_GRAPH_DASHBOARD_GZIP_B64 }}
+          PROJECT_GRAPH_DASHBOARD_SHA256: ${{ secrets.PROJECT_GRAPH_DASHBOARD_SHA256 }}
+          DEPLOY_SERVICE: ${{ needs.validate.outputs.deploy_service }}
+        run: |
+          set -euo pipefail
+
+          SERVICE_DIR="${{ env.DEPLOY_DIR }}/homelab/project-graph"
+          SITE_DIR="$SERVICE_DIR/site"
+          BACKUP_DIR="${{ env.DEPLOY_DIR }}/.backups/homelab/project-graph-site"
+          BACKUP_KEEP=5
+
+          # Create the bind-mount source dirs as the runner user BEFORE any
+          # early exit below — otherwise an 'all' deploy without secrets lets
+          # Docker create site/ root-owned and later runs can never write it.
+          mkdir -p "$SITE_DIR" "$BACKUP_DIR"
+
+          if [ -z "$PROJECT_GRAPH_DASHBOARD_GZIP_B64" ] && [ -z "$PROJECT_GRAPH_DASHBOARD_SHA256" ]; then
+            if [ "$DEPLOY_SERVICE" = "project-graph" ]; then
+              echo "❌ project-graph deploy requested but its secrets are not configured"
+              exit 1
+            fi
+            echo "⚠️ project-graph secrets not configured; skipping reconstruction (existing site preserved)"
+            exit 0
+          fi
+          if [ -z "$PROJECT_GRAPH_DASHBOARD_GZIP_B64" ] || [ -z "$PROJECT_GRAPH_DASHBOARD_SHA256" ]; then
+            echo "❌ Exactly one of the two project-graph secrets is set — misconfiguration, refusing to deploy"
+            exit 1
+          fi
+
+          TMP_DIR="$(mktemp -d)"
+          trap 'rm -rf "$TMP_DIR"' EXIT
+
+          # base64 -> gzip -> HTML, validating each stage without echoing content
+          if ! printf '%s' "$PROJECT_GRAPH_DASHBOARD_GZIP_B64" | base64 -d > "$TMP_DIR/index.html.gz" 2>/dev/null; then
+            echo "❌ PROJECT_GRAPH_DASHBOARD_GZIP_B64 is not valid base64"
+            exit 1
+          fi
+          if ! gzip -t "$TMP_DIR/index.html.gz" 2>/dev/null; then
+            echo "❌ Decoded payload is not valid gzip"
+            exit 1
+          fi
+          gunzip -c "$TMP_DIR/index.html.gz" > "$TMP_DIR/index.html"
+
+          ACTUAL_SHA="$(sha256sum "$TMP_DIR/index.html" | awk '{print $1}')"
+          if [ "$ACTUAL_SHA" != "$PROJECT_GRAPH_DASHBOARD_SHA256" ]; then
+            echo "❌ SHA-256 mismatch (hashes are not secret):"
+            echo "   expected: $PROJECT_GRAPH_DASHBOARD_SHA256"
+            echo "   actual:   $ACTUAL_SHA"
+            exit 1
+          fi
+
+          if ! grep -qF '/assets/vis-network.min.js' "$TMP_DIR/index.html"; then
+            echo "❌ Reconstructed HTML does not reference /assets/vis-network.min.js"
+            exit 1
+          fi
+          # Reject http://, https://, and protocol-relative // runtime refs
+          # (fetching attributes, srcset candidates, CSS url()/@import, and
+          # meta refresh). Local absolute paths (single leading /) and
+          # plain-text URLs in graph data remain allowed. CSP is still the
+          # real barrier; this is defense in depth.
+          EXTERNAL_ATTR_RE="(src|href|srcset|poster|action|formaction)[[:space:]]*=[[:space:]]*[\"']?[[:space:]]*(https?:)?//"
+          EXTERNAL_SRCSET_RE="srcset[[:space:]]*=[[:space:]]*[\"'][^\"']*[,[:space:]][[:space:]]*(https?:)?//"
+          EXTERNAL_CSS_RE="url\([[:space:]]*[\"']?[[:space:]]*(https?:)?//|@import[[:space:]]+[\"']?[[:space:]]*(https?:)?//"
+          EXTERNAL_META_RE="<meta[^>]*url[[:space:]]*=[[:space:]]*[\"']?[[:space:]]*(https?:)?//"
+          if grep -Eqi "$EXTERNAL_ATTR_RE|$EXTERNAL_SRCSET_RE|$EXTERNAL_CSS_RE|$EXTERNAL_META_RE" "$TMP_DIR/index.html"; then
+            echo "❌ Reconstructed HTML contains external runtime references (http(s):// or protocol-relative //)"
+            exit 1
+          fi
+          echo "✅ Payload validated (${ACTUAL_SHA})"
+
+          # Same content already deployed? Do nothing — replacing (or backing
+          # up) an identical file would rotate real rollback history away.
+          if [ -f "$SITE_DIR/index.html" ] \
+             && [ "$(sha256sum "$SITE_DIR/index.html" | awk '{print $1}')" = "$ACTUAL_SHA" ]; then
+            echo "✅ site/index.html already matches published SHA-256 — unchanged, skipping backup and replace"
+            exit 0
+          fi
+
+          # Rollback copy of the current HTML (bounded retention)
+          if [ -f "$SITE_DIR/index.html" ]; then
+            cp -p "$SITE_DIR/index.html" "$BACKUP_DIR/index.html.$(date +%Y%m%d_%H%M%S)"
+            ls -t "$BACKUP_DIR" | grep '^index\.html\.' | tail -n +$((BACKUP_KEEP + 1)) \
+              | while IFS= read -r old; do rm -f "$BACKUP_DIR/$old"; done
+            echo "✅ Previous HTML backed up to $BACKUP_DIR"
+          fi
+
+          # Atomic replacement: stage in the same directory, then rename.
+          # /assets/ is a separate read-only mount of the repo-vendored
+          # bundle, so no private/public copying is needed here.
+          install -m 0444 "$TMP_DIR/index.html" "$SITE_DIR/.index.html.tmp"
+          mv -f "$SITE_DIR/.index.html.tmp" "$SITE_DIR/index.html"
+          echo "✅ site/index.html replaced atomically (mode 0444)"
+
       - name: Deploy homelab services
+        env:
+          DEPLOY_SERVICE: ${{ needs.validate.outputs.deploy_service }}
         run: |
           cd ${{ env.DEPLOY_DIR }}
-          bash deploy/deploy.sh --server homelab ${{ github.event.inputs.service || 'all' }}
+          bash deploy/deploy.sh --server homelab "$DEPLOY_SERVICE"
 
       - name: Deployment summary
+        env:
+          DEPLOY_SERVICE: ${{ needs.validate.outputs.deploy_service }}
+          COMMIT_SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
         run: |
           echo "🚀 Homelab deployment completed"
-          echo "📦 Service: ${{ github.event.inputs.service || 'all' }}"
-          echo "📝 Commit: ${{ github.sha }}"
-          echo "👤 Author: ${{ github.actor }}"
+          echo "📦 Service: $DEPLOY_SERVICE"
+          echo "📝 Commit: $COMMIT_SHA"
+          echo "👤 Author: $ACTOR"
