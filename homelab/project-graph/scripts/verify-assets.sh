@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # verify-assets.sh — check the vendored vis-network bundle matches the pinned
-# hash, that compose does not regress to a nested /assets mount, and that no
+# hash, that compose does not regress to a nested /assets mount or an
+# individual nginx config file bind (NFS inode pinning), and that no
 # private content has leaked into Git-tracked paths.
 # Used by CI (validate job) and safe to run locally. Read-only.
 
@@ -20,6 +21,19 @@ if grep -Eq '/usr/share/nginx/html/assets' "${SERVICE_DIR}/compose.yaml"; then
     echo "ERROR: compose.yaml mounts /usr/share/nginx/html/assets — nested mount" >&2
     echo "  under the read-only site mount fails on Docker. Publish the asset" >&2
     echo "  into site/assets/ via the deploy workflow instead." >&2
+    exit 1
+fi
+
+# Regression guard: the deploy tree is NFS-backed. An individual file bind
+# of nginx/default.conf pins that file's inode; when the deploy rsync
+# replaces the file, NFS silly-renames the still-open old inode to .nfs*
+# and the next `rsync --delete` fails with "Device or resource busy".
+# nginx config must be mounted as a DIRECTORY (./nginx -> /etc/nginx/conf.d).
+if grep -Eq '/etc/nginx/conf\.d/default\.conf' "${SERVICE_DIR}/compose.yaml"; then
+    echo "ERROR: compose.yaml bind-mounts /etc/nginx/conf.d/default.conf as an" >&2
+    echo "  individual file. On the NFS-backed deploy tree this pins the inode" >&2
+    echo "  and breaks rsync --delete after the file is replaced (silly-rename" >&2
+    echo "  .nfs* leftovers). Mount the directory instead: ./nginx:/etc/nginx/conf.d:ro" >&2
     exit 1
 fi
 

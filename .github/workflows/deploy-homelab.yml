@@ -188,9 +188,16 @@ jobs:
 
             # --delete is scoped to this one directory; site/ (private
             # runtime HTML, reconstructed from secrets) is preserved.
-            rsync -rlD --delete \
+            # .nfs* files are NFS silly-renames of replaced-but-still-open
+            # inodes (e.g. a config file the previous container still holds);
+            # they cannot be unlinked while open, so exclude them from both
+            # copy and delete — NFS reclaims them once the inode is released.
+            # --checksum is required: this sync intentionally omits -t, and
+            # size-only quick checks miss same-length config changes.
+            rsync -rlD --checksum --delete \
               --no-perms --no-owner --no-group \
               --exclude='site/' \
+              --exclude='.nfs*' \
               "$GITHUB_WORKSPACE/homelab/project-graph/" "$SERVICE_DIR/" \
               || { echo "❌ project-graph rsync failed — aborting deploy"; exit 1; }
 
@@ -429,8 +436,8 @@ jobs:
             echo "Pulling digest-pinned image"
             docker compose -f compose.yaml pull --quiet
 
-            echo "Starting project-graph"
-            docker compose -f compose.yaml up -d
+            echo "Starting project-graph (force recreate to apply NFS-backed config changes)"
+            docker compose -f compose.yaml up -d --force-recreate
 
             # Bounded health wait: compose healthcheck has start_period 10s
             # and interval 30s, so allow up to 24 x 5s = 120s.

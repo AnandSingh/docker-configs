@@ -16,7 +16,14 @@ services:
     security_opt:
       - no-new-privileges:true
     volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # Directory mount, NOT an individual file bind of nginx/default.conf.
+      # The deploy tree is NFS-backed: binding a single file pins its inode,
+      # so when the deploy rsync replaces the file NFS silly-renames the old
+      # open inode to .nfs* and the next `rsync --delete` fails with "Device
+      # or resource busy". A directory mount never pins a specific file inode;
+      # the isolated workflow uses `up --force-recreate` so config changes are
+      # applied and any old open inode is released on every deployment.
+      - ./nginx:/etc/nginx/conf.d:ro
       # Single web-root mount. site/ (deploy host only, never in Git) holds
       # the private reconstructed index.html PLUS site/assets/, a deployed
       # copy of the public hash-pinned vis-network bundle published by the
